@@ -2,12 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  @apply transition-colors duration-300;
+body {
+  @apply bg-slate-50 text-gray-900 antialiased dark:bg-slate-900 dark:text-white;
 }
 
-body {
-  @apply bg-slate-50 text-gray-900 dark:bg-slate-900 dark:text-white;
+button,
+a,
+input,
+textarea,
+select {
+  @apply transition-colors duration-200;
 }
 
 html.dark {
