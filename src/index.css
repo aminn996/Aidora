@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  @apply transition-colors duration-300;
+}
+
+body {
+  @apply bg-slate-50 text-gray-900 dark:bg-slate-900 dark:text-white;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+a {
+  @apply text-aidora-green hover:text-aidora-green/80;
+}
+
+input, textarea, select {
+  @apply bg-white dark:bg-aidora-dark text-gray-900 dark:text-white border-gray-300 dark:border-gray-700;
+}
+
+button.primary {
+  @apply bg-aidora-green hover:bg-aidora-green/90 text-white;
+}
