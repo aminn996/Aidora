@@ -1,107 +1,64 @@
-// Aidora Backend Server
-// Production-ready Express server with MongoDB, JWT auth, RBAC, validation and centralized error handling.
-
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
-const morgan = require('morgan');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
-const xssClean = require('xss-clean');
-const compression = require('compression');
-const passport = require('passport');
-require('dotenv').config({ path: __dirname + '/.env' });
-
-const { connectDB } = require('./config/db');
-const { errorHandler, notFoundHandler } = require('./middlewares/error');
-const authRoutes = require('./routes/auth');
-const serviceRoutes = require('./routes/services');
-const bookingRoutes = require('./routes/bookings');
-const adminRoutes = require('./routes/admin');
-const userRoutes = require('./routes/users');
-const paymentRoutes = require('./routes/payments');
-const walletRoutes = require('./routes/wallets');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { z } = require('zod');
+require('dotenv').config();
+const { pool, connectDB } = require('./config/db');
 
 const app = express();
+const PORT = Number(process.env.PORT || 5000);
+const JWT_SECRET = process.env.BETTER_AUTH_SECRET;
+if (!JWT_SECRET) throw new Error('BETTER_AUTH_SECRET is required');
 
-// Initialize Passport
-require('./config/passport');
-app.use(passport.initialize());
-
-// Security and performance middlewares
+const origins = (process.env.FRONTEND_URL || '').split(',').map((value) => value.trim()).filter(Boolean);
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(compression());
-app.use(xssClean());
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-
-// CORS is explicit in production and permissive only when no origin is configured.
-const allowedOrigins = (process.env.FRONTEND_URL || '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error('Origin is not allowed by CORS'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    optionsSuccessStatus: 204,
-  })
-);
-// Ensure preflight requests succeed for all routes
-app.options('*', cors());
-
-// Body parsers
 app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(cors({ origin: origins.length ? origins : true, credentials: true }));
+app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: true }));
 
-// Rate limiting
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api/', apiLimiter);
+const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+const userSchema = z.object({ name: z.string().trim().min(2).max(100), email: z.string().email().transform((v) => v.toLowerCase()), password: z.string().min(8).max(128), role: z.enum(['client', 'provider']).optional() });
+const serviceSchema = z.object({ title: z.string().trim().min(2).max(120), description: z.string().trim().max(2000).optional(), category: z.string().trim().min(2).max(60), price: z.coerce.number().min(0), image: z.string().url().optional().or(z.literal('')) });
 
-// Health and status endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', appStatus: process.env.APP_STATUS || 'active' });
-});
+function sign(user) { return jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' }); }
+function publicUser(user) { const { password_hash, ...safe } = user; return safe; }
+function auth(req, res, next) {
+  const token = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : req.cookies.token;
+  if (!token) return res.status(401).json({ message: 'Authentication required' });
+  try { req.auth = jwt.verify(token, JWT_SECRET); next(); } catch { return res.status(401).json({ message: 'Invalid or expired session' }); }
+}
+function role(...roles) { return (req, res, next) => roles.includes(req.auth.role) ? next() : res.status(403).json({ message: 'Insufficient permissions' }); }
 
-// API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/services', serviceRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/wallets', walletRoutes);
+app.get('/api/health', (req, res) => res.json({ status: 'ok', database: 'neon', timestamp: new Date().toISOString() }));
+app.post('/api/auth/register', asyncRoute(async (req, res) => {
+  const input = userSchema.parse(req.body);
+  const hash = await bcrypt.hash(input.password, 12);
+  const result = await pool.query('INSERT INTO users (name,email,password_hash,role) VALUES ($1,$2,$3,$4) RETURNING id,name,email,role,phone,profile_picture,location,created_at,updated_at', [input.name, input.email, hash, input.role || 'client']);
+  const user = result.rows[0]; res.status(201).json({ user, token: sign(user) });
+}));
+app.post('/api/auth/login', asyncRoute(async (req, res) => {
+  const input = z.object({ email: z.string().email(), password: z.string().min(1) }).parse(req.body);
+  const result = await pool.query('SELECT * FROM users WHERE email=$1', [input.email.toLowerCase()]);
+  const user = result.rows[0];
+  if (!user || !(await bcrypt.compare(input.password, user.password_hash))) return res.status(401).json({ message: 'Invalid email or password' });
+  res.json({ user: publicUser(user), token: sign(user) });
+}));
+app.get('/api/auth/me', auth, asyncRoute(async (req, res) => { const result = await pool.query('SELECT id,name,email,role,phone,profile_picture,location,created_at,updated_at FROM users WHERE id=$1', [req.auth.sub]); if (!result.rows[0]) return res.status(404).json({ message: 'User not found' }); res.json({ user: result.rows[0] }); }));
+app.put('/api/auth/profile', auth, asyncRoute(async (req, res) => { const input = z.object({ name: z.string().trim().min(2).max(100).optional(), phone: z.string().trim().max(30).optional(), profilePicture: z.string().url().optional(), location: z.record(z.any()).optional() }).parse(req.body); const result = await pool.query('UPDATE users SET name=COALESCE($1,name),phone=COALESCE($2,phone),profile_picture=COALESCE($3,profile_picture),location=COALESCE($4,location),updated_at=NOW() WHERE id=$5 RETURNING id,name,email,role,phone,profile_picture,location,created_at,updated_at', [input.name, input.phone, input.profilePicture, input.location ? JSON.stringify(input.location) : null, req.auth.sub]); res.json({ user: result.rows[0] }); }));
+app.get('/api/services', asyncRoute(async (req, res) => { const values = []; let query = 'SELECT s.*, u.name AS provider_name FROM services s JOIN users u ON u.id=s.provider_id WHERE s.is_active=true'; if (req.query.category) { values.push(req.query.category); query += ` AND s.category=$${values.length}`; } values.push(Math.min(Number(req.query.limit) || 50, 100)); query += ` ORDER BY s.created_at DESC LIMIT $${values.length}`; const result = await pool.query(query, values); res.json({ services: result.rows }); }));
+app.post('/api/services', auth, role('provider','admin'), asyncRoute(async (req, res) => { const input = serviceSchema.parse(req.body); const result = await pool.query('INSERT INTO services (provider_id,title,description,category,price,image) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *', [req.auth.sub,input.title,input.description || '',input.category,input.price,input.image || null]); res.status(201).json({ service: result.rows[0] }); }));
+app.get('/api/services/:id', asyncRoute(async (req, res) => { const result = await pool.query('SELECT s.*, u.name AS provider_name FROM services s JOIN users u ON u.id=s.provider_id WHERE s.id=$1 AND s.is_active=true', [req.params.id]); if (!result.rows[0]) return res.status(404).json({ message: 'Service not found' }); res.json({ service: result.rows[0] }); }));
+app.get('/api/bookings', auth, asyncRoute(async (req, res) => { const result = await pool.query('SELECT b.*, s.title, u.name AS provider_name FROM bookings b JOIN services s ON s.id=b.service_id JOIN users u ON u.id=b.provider_id WHERE b.client_id=$1 OR b.provider_id=$1 ORDER BY b.created_at DESC', [req.auth.sub]); res.json({ bookings: result.rows }); }));
+app.post('/api/bookings', auth, asyncRoute(async (req, res) => { const input = z.object({ serviceId: z.string().uuid(), scheduledAt: z.string().datetime().optional(), notes: z.string().max(2000).optional() }).parse(req.body); const service = await pool.query('SELECT provider_id FROM services WHERE id=$1 AND is_active=true', [input.serviceId]); if (!service.rows[0]) return res.status(404).json({ message: 'Service not found' }); const result = await pool.query('INSERT INTO bookings (service_id,client_id,provider_id,scheduled_at,notes) VALUES ($1,$2,$3,$4,$5) RETURNING *', [input.serviceId,req.auth.sub,service.rows[0].provider_id,input.scheduledAt || null,input.notes || null]); res.status(201).json({ booking: result.rows[0] }); }));
+app.use((err, req, res, next) => { if (err instanceof z.ZodError) return res.status(400).json({ message: 'Invalid request', issues: err.issues }); if (err.code === '23505') return res.status(409).json({ message: 'A record with that value already exists' }); console.error(err); res.status(500).json({ message: 'Internal server error' }); });
 
-// Not found
-app.use(notFoundHandler);
-// Central error handler
-app.use(errorHandler);
-
-// Start server after DB connects
-const PORT = process.env.PORT || 5000;
-connectDB()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Aidora backend running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error('Failed to connect to database', err);
-    process.exit(1);
-  });
-
+if (require.main === module) connectDB().then(() => app.listen(PORT, () => console.log(`Aidora API listening on ${PORT}`))).catch((error) => { console.error(error); process.exit(1); });
 module.exports = app;
