@@ -158,7 +158,7 @@ export default function Services() {
       const servicesData = res.data.services || res.data.data || res.data || [];
       console.log('Fetched services:', servicesData);
       const servicesWithDistance = servicesData.map(service => {
-        let distance = Math.random() * 15 + 0.5;
+        let distance = null;
         if (userLocation && service.location?.coordinates) {
           distance = calculateDistance(
             userLocation.lat,
@@ -170,7 +170,7 @@ export default function Services() {
         return {
           ...service,
           distance,
-          rating: service.rating || (Math.random() * 2 + 3.5),
+          rating: Number(service.rating) || 0,
         };
       });
       setServices(servicesWithDistance);

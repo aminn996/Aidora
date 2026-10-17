@@ -46,7 +46,7 @@ export const handleFacebookLogin = async (response) => {
 
 // Manual Google Sign-In (fallback if library unavailable)
 export const openGoogleSignIn = () => {
-  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${import.meta.env.VITE_GOOGLE_CLIENT_ID}&redirect_uri=${window.location.origin}/auth/google/callback&response_type=code&scope=openid profile email`;
+  window.location.assign(`${import.meta.env.VITE_API_BASE || '/api'}/auth/google`);
 };
 
 // Manual Facebook Sign-In (fallback if library unavailable)

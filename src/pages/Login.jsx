@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiMail, FiLock, FiEye, FiEyeOff, FiMapPin } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import api from '../services/api.js';
+import { openGoogleSignIn } from '../services/oauth.js';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, geolocation } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,56 +35,9 @@ export default function Login() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    const toastId = toast.loading('Connecting to Google...');
-    try {
-      if (!window.google) {
-        toast.error('Google Sign-In not available. Please refresh and configure VITE_GOOGLE_CLIENT_ID', { id: toastId });
-        return;
-      }
-      
-      // Initialize Google Sign-In
-      window.google.accounts.id.initialize({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-        callback: async (response) => {
-          try {
-            // Decode the JWT to extract user info
-            const payload = JSON.parse(atob(response.credential.split('.')[1]));
-            
-            // Send to backend
-            const res = await api.post('/auth/google', {
-              googleId: payload.sub,
-              email: payload.email,
-              name: payload.name,
-              profilePicture: payload.picture,
-            });
-            
-            localStorage.setItem('token', res.data.token);
-            toast.success('Google login successful!', { id: toastId });
-            navigate('/');
-          } catch (err) {
-            toast.error(err?.response?.data?.message || 'Google login failed', { id: toastId });
-          }
-        },
-      });
-      
-      // Trigger the Google One Tap prompt
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // Fallback to render button if One Tap is not displayed
-          const buttonContainer = document.createElement('div');
-          window.google.accounts.id.renderButton(buttonContainer, {
-            type: 'standard',
-            theme: 'outline',
-            size: 'large',
-          });
-          buttonContainer.children[0].click();
-        }
-      });
-    } catch (err) {
-      console.error('Google login error:', err);
-      toast.error('Google login not configured', { id: toastId });
-    }
+  const handleGoogleLogin = () => {
+    toast.loading('Opening secure Google sign-in...');
+    openGoogleSignIn();
   };
 
   const handleFacebookLogin = async () => {
@@ -171,6 +124,18 @@ export default function Login() {
               </Link>
             </div>
 
+            <div className="mt-5 flex items-start gap-3 rounded-xl border border-aidora-green/20 bg-aidora-green/5 p-4">
+              <FiMapPin className="mt-0.5 shrink-0 text-aidora-green" size={18} aria-hidden="true" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {geolocation?.address?.city ? `Discover trusted services near ${geolocation.address.city}` : 'Discover trusted services near you'}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                  {geolocation?.permission === 'granted' ? 'Your location is ready to personalize your marketplace.' : 'Location is optional and only used to improve nearby recommendations.'}
+                </p>
+              </div>
+            </div>
+
           {/* Form */}
           <form onSubmit={onSubmit} className="space-y-4">
             {/* Email */}
@@ -244,8 +209,7 @@ export default function Login() {
 
           {/* Social Login */}
           <div className="space-y-3">
-            {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-              <motion.button
+            <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="button"
@@ -260,7 +224,6 @@ export default function Login() {
                 </svg>
                 Sign in with Google
               </motion.button>
-            )}
 
             {import.meta.env.VITE_FACEBOOK_APP_ID && (
               <motion.button

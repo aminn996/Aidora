@@ -38,8 +38,8 @@ export default function Home() {
 
   useEffect(() => {
     if (coords?.lat && coords?.lng) {
-      // Reverse geocode to get city - in production use a proper API
-      setUserCity('Tunis'); // Default for demo
+      // Keep the location label honest until a reverse-geocoding result is available.
+      setUserCity('your area');
     }
   }, [coords]);
 

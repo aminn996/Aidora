@@ -23,7 +23,12 @@ export function AuthProvider({ children }) {
   // Verify token on load
   useEffect(() => {
     const verify = async () => {
-      const savedToken = localStorage.getItem('token');
+      const oauthToken = new URLSearchParams(window.location.search).get('oauth_token');
+      if (oauthToken) {
+        localStorage.setItem('token', oauthToken);
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+      }
+      const savedToken = oauthToken || localStorage.getItem('token');
       if (!savedToken) {
         setLoading(false);
         return;

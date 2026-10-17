@@ -1,7 +1,10 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || 'http://localhost:5000/api',
+  // Use a same-origin API in production by default. Set VITE_API_BASE when the
+  // Express API is deployed separately from the Vercel frontend.
+  baseURL: import.meta.env.VITE_API_BASE || '/api',
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
