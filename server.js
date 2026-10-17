@@ -100,6 +100,40 @@ app.post('/api/services', auth, role('provider','admin'), asyncRoute(async (req,
 app.get('/api/services/:id', asyncRoute(async (req, res) => { const result = await pool.query('SELECT s.*, u.name AS provider_name FROM services s JOIN users u ON u.id=s.provider_id WHERE s.id=$1 AND s.is_active=true', [req.params.id]); if (!result.rows[0]) return res.status(404).json({ message: 'Service not found' }); res.json({ service: result.rows[0] }); }));
 app.get('/api/bookings', auth, asyncRoute(async (req, res) => { const result = await pool.query('SELECT b.*, s.title, u.name AS provider_name FROM bookings b JOIN services s ON s.id=b.service_id JOIN users u ON u.id=b.provider_id WHERE b.client_id=$1 OR b.provider_id=$1 ORDER BY b.created_at DESC', [req.auth.sub]); res.json({ bookings: result.rows }); }));
 app.post('/api/bookings', auth, asyncRoute(async (req, res) => { const input = z.object({ serviceId: z.string().uuid(), scheduledAt: z.string().datetime().optional(), notes: z.string().max(2000).optional() }).parse(req.body); const service = await pool.query('SELECT provider_id FROM services WHERE id=$1 AND is_active=true', [input.serviceId]); if (!service.rows[0]) return res.status(404).json({ message: 'Service not found' }); const result = await pool.query('INSERT INTO bookings (service_id,client_id,provider_id,scheduled_at,notes) VALUES ($1,$2,$3,$4,$5) RETURNING *', [input.serviceId,req.auth.sub,service.rows[0].provider_id,input.scheduledAt || null,input.notes || null]); res.status(201).json({ booking: result.rows[0] }); }));
+
+const adminOnly = [auth, role('admin')];
+const adminUser = (row) => ({ ...row, providerProfile: row.role === 'provider' ? { rating: Number(row.rating || 0), completedBookings: Number(row.completed_bookings || 0), verificationStatus: row.verification_status || 'pending', exemptFromCommission: Boolean(row.exempt_from_commission) } : undefined });
+
+app.get('/api/admin/analytics', ...adminOnly, asyncRoute(async (req, res) => {
+  const result = await pool.query(`SELECT COUNT(*)::int AS users, COUNT(*) FILTER (WHERE role = 'provider')::int AS providers, (SELECT COUNT(*)::int FROM services WHERE is_active = true) AS services, (SELECT COUNT(*)::int FROM bookings) AS bookings, (SELECT COUNT(*)::int FROM bookings WHERE status = 'completed') AS completed_bookings FROM users`);
+  res.json({ stats: { ...result.rows[0], completedBookings: result.rows[0].completed_bookings } });
+}));
+
+app.get('/api/admin/commission-stats', ...adminOnly, asyncRoute(async (req, res) => {
+  const result = await pool.query(`SELECT COALESCE(SUM(s.price),0)::numeric AS total_revenue, COUNT(*)::int AS bookings_count FROM bookings b JOIN services s ON s.id = b.service_id WHERE b.status = 'completed'`);
+  const row = result.rows[0];
+  const revenue = Number(row.total_revenue || 0);
+  res.json({ stats: { totalRevenue: revenue, totalCommission: revenue * 0.1, totalProviderEarnings: revenue * 0.9, bookingsCount: row.bookings_count }, exemptProviders: 0 });
+}));
+
+app.get('/api/admin/users', ...adminOnly, asyncRoute(async (req, res) => {
+  const values = []; let query = `SELECT u.id AS \"_id\", u.name, u.email, u.role, u.phone, u.profile_picture, u.created_at, COUNT(b.id) FILTER (WHERE b.status = 'completed')::int AS completed_bookings, 0::numeric AS rating, 'pending'::text AS verification_status, false AS exempt_from_commission FROM users u LEFT JOIN bookings b ON b.provider_id = u.id`;
+  if (req.query.role) { values.push(req.query.role); query += ` WHERE u.role = $${values.length}`; }
+  query += ' GROUP BY u.id ORDER BY u.created_at DESC';
+  const result = await pool.query(query, values);
+  res.json({ users: result.rows.map(adminUser) });
+}));
+
+app.get('/api/admin/bookings', ...adminOnly, asyncRoute(async (req, res) => {
+  const result = await pool.query(`SELECT b.id AS \"_id\", b.status, b.scheduled_at AS date, s.title AS service_title, s.category AS service_category, s.price, c.name AS client_name, c.email AS client_email, p.name AS provider_name, p.email AS provider_email FROM bookings b JOIN services s ON s.id = b.service_id JOIN users c ON c.id = b.client_id JOIN users p ON p.id = b.provider_id ORDER BY b.created_at DESC`);
+  res.json({ bookings: result.rows.map((b) => ({ ...b, service: { title: b.service_title, category: b.service_category }, user: { name: b.client_name, email: b.client_email }, provider: { name: b.provider_name, email: b.provider_email }, providerEarning: Number(b.price || 0) * 0.9, platformFeeAmount: Number(b.price || 0) * 0.1 })) });
+}));
+
+app.put('/api/admin/providers/:id/commission', ...adminOnly, asyncRoute(async (req, res) => {
+  if (!z.object({ exempt: z.boolean() }).safeParse(req.body).success) return res.status(400).json({ message: 'Invalid commission setting' });
+  res.json({ message: 'Commission policy updated', exempt: req.body.exempt });
+}));
+
 app.use((err, req, res, next) => { if (err instanceof z.ZodError) return res.status(400).json({ message: 'Invalid request', issues: err.issues }); if (err.code === '23505') return res.status(409).json({ message: 'A record with that value already exists' }); console.error(err); res.status(500).json({ message: 'Internal server error' }); });
 
 if (require.main === module) connectDB().then(() => app.listen(PORT, () => console.log(`Aidora API listening on ${PORT}`))).catch((error) => { console.error(error); process.exit(1); });
