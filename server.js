@@ -67,14 +67,20 @@ async function findOrCreateGoogleUser(profile) {
 
 app.get('/api/auth/google', (req, res) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) return res.status(503).json({ message: 'Google authentication is not configured' });
-  const frontendUrl = (process.env.FRONTEND_URL || req.headers.origin || '').split(',')[0].trim().replace(/\/$/, '');
+  const configuredFrontend = (process.env.FRONTEND_URL || '').split(',')[0].trim().replace(/\/$/, '');
+  const requestOrigin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+  const frontendUrl = configuredFrontend || requestOrigin;
+  try { new URL(frontendUrl); } catch { return res.status(500).json({ message: 'Invalid frontend URL configuration' }); }
   const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
-  const params = new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID, redirect_uri: redirectUri, response_type: 'code', scope: 'openid email profile', access_type: 'online', prompt: 'select_account' });
+  const state = sign({ frontendUrl, nonce: crypto.randomBytes(16).toString('hex') });
+  const params = new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID, redirect_uri: redirectUri, response_type: 'code', scope: 'openid email profile', access_type: 'online', prompt: 'select_account', state });
   res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
 });
 
 app.get('/api/auth/google/callback', asyncRoute(async (req, res) => {
   const code = z.string().min(1).parse(req.query.code);
+  const state = z.string().min(1).parse(req.query.state);
+  const statePayload = jwt.verify(state, JWT_SECRET);
   const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ code, client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: redirectUri, grant_type: 'authorization_code' }) });
   if (!tokenResponse.ok) return res.status(401).json({ message: 'Google authentication failed' });
@@ -84,7 +90,7 @@ app.get('/api/auth/google/callback', asyncRoute(async (req, res) => {
   const profile = await profileResponse.json();
   if (!profile.email || !profile.email_verified) return res.status(401).json({ message: 'A verified Google email is required' });
   const user = await findOrCreateGoogleUser({ email: profile.email, name: profile.name || profile.email.split('@')[0], picture: profile.picture });
-  const frontendUrl = (process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`).split(',')[0].trim().replace(/\/$/, '');
+  const frontendUrl = new URL(statePayload.frontendUrl).origin;
   res.redirect(`${frontendUrl}/?oauth_token=${encodeURIComponent(sign(user))}`);
 }));
 app.get('/api/auth/me', auth, asyncRoute(async (req, res) => { const result = await pool.query('SELECT id,name,email,role,phone,profile_picture,location,created_at,updated_at FROM users WHERE id=$1', [req.auth.sub]); if (!result.rows[0]) return res.status(404).json({ message: 'User not found' }); res.json({ user: result.rows[0] }); }));

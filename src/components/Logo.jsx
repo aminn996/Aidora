@@ -18,7 +18,8 @@ export default function Logo({ size = 'md', showText = false }) {
     >
       <motion.img
         src="/assets/aidora-logo.svg"
-        alt="Aidora Logo"
+        alt="Aidora home"
+        loading="eager"
         width={s}
         height={s}
         className="rounded-lg"
