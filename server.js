@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('node:crypto');
 const { z } = require('zod');
 require('dotenv').config();
 const { pool, connectDB } = require('./config/db');
@@ -50,6 +51,41 @@ app.post('/api/auth/login', asyncRoute(async (req, res) => {
   const user = result.rows[0];
   if (!user || !(await bcrypt.compare(input.password, user.password_hash))) return res.status(401).json({ message: 'Invalid email or password' });
   res.json({ user: publicUser(user), token: sign(user) });
+}));
+
+async function findOrCreateGoogleUser(profile) {
+  const email = profile.email.toLowerCase();
+  const existing = await pool.query('SELECT id,name,email,role,phone,profile_picture,location,created_at,updated_at FROM users WHERE email=$1', [email]);
+  if (existing.rows[0]) {
+    const result = await pool.query('UPDATE users SET name=$1,profile_picture=COALESCE($2,profile_picture),updated_at=NOW() WHERE id=$3 RETURNING id,name,email,role,phone,profile_picture,location,created_at,updated_at', [profile.name, profile.picture || null, existing.rows[0].id]);
+    return result.rows[0];
+  }
+  const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
+  const result = await pool.query('INSERT INTO users (name,email,password_hash,profile_picture) VALUES ($1,$2,$3,$4) RETURNING id,name,email,role,phone,profile_picture,location,created_at,updated_at', [profile.name, email, passwordHash, profile.picture || null]);
+  return result.rows[0];
+}
+
+app.get('/api/auth/google', (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) return res.status(503).json({ message: 'Google authentication is not configured' });
+  const frontendUrl = (process.env.FRONTEND_URL || req.headers.origin || '').split(',')[0].trim().replace(/\/$/, '');
+  const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+  const params = new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID, redirect_uri: redirectUri, response_type: 'code', scope: 'openid email profile', access_type: 'online', prompt: 'select_account' });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+app.get('/api/auth/google/callback', asyncRoute(async (req, res) => {
+  const code = z.string().min(1).parse(req.query.code);
+  const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ code, client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: redirectUri, grant_type: 'authorization_code' }) });
+  if (!tokenResponse.ok) return res.status(401).json({ message: 'Google authentication failed' });
+  const tokens = await tokenResponse.json();
+  const profileResponse = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${tokens.access_token}` } });
+  if (!profileResponse.ok) return res.status(401).json({ message: 'Google profile lookup failed' });
+  const profile = await profileResponse.json();
+  if (!profile.email || !profile.email_verified) return res.status(401).json({ message: 'A verified Google email is required' });
+  const user = await findOrCreateGoogleUser({ email: profile.email, name: profile.name || profile.email.split('@')[0], picture: profile.picture });
+  const frontendUrl = (process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`).split(',')[0].trim().replace(/\/$/, '');
+  res.redirect(`${frontendUrl}/?oauth_token=${encodeURIComponent(sign(user))}`);
 }));
 app.get('/api/auth/me', auth, asyncRoute(async (req, res) => { const result = await pool.query('SELECT id,name,email,role,phone,profile_picture,location,created_at,updated_at FROM users WHERE id=$1', [req.auth.sub]); if (!result.rows[0]) return res.status(404).json({ message: 'User not found' }); res.json({ user: result.rows[0] }); }));
 app.put('/api/auth/profile', auth, asyncRoute(async (req, res) => { const input = z.object({ name: z.string().trim().min(2).max(100).optional(), phone: z.string().trim().max(30).optional(), profilePicture: z.string().url().optional(), location: z.record(z.any()).optional() }).parse(req.body); const result = await pool.query('UPDATE users SET name=COALESCE($1,name),phone=COALESCE($2,phone),profile_picture=COALESCE($3,profile_picture),location=COALESCE($4,location),updated_at=NOW() WHERE id=$5 RETURNING id,name,email,role,phone,profile_picture,location,created_at,updated_at', [input.name, input.phone, input.profilePicture, input.location ? JSON.stringify(input.location) : null, req.auth.sub]); res.json({ user: result.rows[0] }); }));
