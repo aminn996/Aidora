@@ -1,272 +1,28 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { FiMenu, FiX, FiSearch, FiGrid, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDarkMode } from '../context/DarkModeContext.jsx';
 import Logo from '../components/Logo.jsx';
 import DarkModeToggle from '../components/DarkModeToggle.jsx';
-import { FiMenu, FiX } from 'react-icons/fi';
-import { useState } from 'react';
+
+const navItems = [{ label: 'Find help', href: '/services' }, { label: 'How Aidora works', href: '/#how-it-works' }];
 
 export default function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
   const { isDarkMode } = useDarkMode();
   const [isOpen, setIsOpen] = useState(false);
+  const close = () => setIsOpen(false);
+  const linkClass = ({ isActive }) => `text-sm font-medium transition ${isActive ? 'text-emerald-600' : 'text-slate-600 hover:text-emerald-600 dark:text-slate-300'}`;
 
-  const navItems = [
-    { label: 'Home', href: '/' },
-    { label: 'Services', href: '/services' },
-    { label: 'Become a Provider', href: '/register?role=provider' },
-  ];
-
-  return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="sticky top-0 z-40 bg-white dark:bg-gray-800 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors duration-300"
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex-shrink-0">
-            <Logo size="md" showText={true} />
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            {navItems.map((item) => (
-              <motion.div key={item.label} whileHover={{ scale: 1.05 }}>
-                <Link
-                  to={item.href}
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                >
-                  {item.label}
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Right Section */}
-          <div className="hidden md:flex items-center gap-4">
-            {/* Dark Mode Toggle */}
-            <DarkModeToggle />
-
-            {/* Auth Section */}
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to="/profile"
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                >
-                  {user?.name}
-                </Link>
-                <Link
-                  to="/settings"
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                >
-                  Settings
-                </Link>
-                {user?.role === 'provider' && (
-                  <>
-                    <Link
-                      to="/provider"
-                      className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      to="/provider/services"
-                      className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                    >
-                      My Services
-                    </Link>
-                  </>
-                )}
-                {user?.role === 'admin' && (
-                  <Link
-                    to="/admin"
-                    className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                  >
-                    Admin
-                  </Link>
-                )}
-                {user?.role === 'admin' && (
-                  <Link
-                    to="/admin/control"
-                    className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                  >
-                    Control Center
-                  </Link>
-                )}
-                <Link
-                  to="/bookings"
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                >
-                  Bookings
-                </Link>
-                <Link
-                  to="/wallet"
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                >
-                  💰 Wallet
-                </Link>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={logout}
-                  className="px-4 py-2 bg-gray-900 dark:bg-red-600 text-white rounded-lg hover:bg-gray-800 dark:hover:bg-red-700 transition-colors"
-                >
-                  Logout
-                </motion.button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/guest-settings"
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                >
-                  Settings
-                </Link>
-                <Link
-                  to="/login"
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                >
-                  Login
-                </Link>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => (window.location.href = '/register')}
-                  className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
-                >
-                  Register
-                </motion.button>
-              </>
-            )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center gap-3">
-            <DarkModeToggle />
-            <button
-              className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              onClick={() => setIsOpen(!isOpen)}
-            >
-              {isOpen ? <FiX size={24} /> : <FiMenu size={24} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: isOpen ? 1 : 0, height: isOpen ? 'auto' : 0 }}
-          transition={{ duration: 0.3 }}
-          className="md:hidden overflow-hidden"
-        >
-          <div className="px-2 pt-2 pb-3 space-y-1 dark:bg-gray-700">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                to={item.href}
-                className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                onClick={() => setIsOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
-            <div className="pt-4 border-t dark:border-gray-600">
-              {isAuthenticated ? (
-                <>
-                  <Link
-                    to="/profile"
-                    className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Profile
-                  </Link>
-                  <Link
-                    to="/wallet"
-                    className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    💰 Wallet
-                  </Link>
-                  <Link
-                    to="/bookings"
-                    className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Bookings
-                  </Link>
-                  {user?.role === 'provider' && (
-                    <Link
-                      to="/provider"
-                      className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      Dashboard
-                    </Link>
-                  )}
-                  {user?.role === 'admin' && (
-                    <Link
-                      to="/admin"
-                      className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      Admin
-                    </Link>
-                  )}
-                  {user?.role === 'admin' && (
-                    <Link
-                      to="/admin/control"
-                      className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      Control Center
-                    </Link>
-                  )}
-                  {user?.role === 'provider' && (
-                    <Link
-                      to="/provider/services"
-                      className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      My Services
-                    </Link>
-                  )}
-                  <button
-                    onClick={() => {
-                      logout();
-                      setIsOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link
-                    to="/login"
-                    className="block px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="block px-3 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900 rounded-lg font-medium transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Register
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </motion.nav>
-  );
+  return <motion.header initial={{ y: -80 }} animate={{ y: 0 }} className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
+    <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
+      <Link to="/" onClick={close} aria-label="Aidora home"><Logo size="md" showText /></Link>
+      <nav className="hidden items-center gap-8 md:flex" aria-label="Primary navigation">{navItems.map((item) => <NavLink key={item.href} to={item.href} className={linkClass}>{item.label}</NavLink>)}</nav>
+      <div className="hidden items-center gap-3 md:flex"><Link to="/services" className="flex size-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-emerald-600 dark:hover:bg-slate-800" aria-label="Search"><FiSearch /></Link><DarkModeToggle />{isAuthenticated ? <><Link to={user?.role === 'admin' ? '/admin' : user?.role === 'provider' ? '/provider' : '/profile'} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-700"><span className="flex size-7 items-center justify-center rounded-full bg-emerald-100 text-xs text-emerald-700">{user?.name?.charAt(0)?.toUpperCase() || 'A'}</span>{user?.name || 'Account'}</Link><button onClick={logout} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><FiLogOut /> Log out</button></> : <><Link to="/login" className="px-3 py-2 text-sm font-semibold text-slate-700 hover:text-emerald-600 dark:text-slate-200">Log in</Link><Link to="/register" className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600">Get started</Link></>}</div>
+      <div className="flex items-center gap-2 md:hidden"><DarkModeToggle /><button onClick={() => setIsOpen((open) => !open)} className="rounded-xl p-2 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800" aria-label={isOpen ? 'Close menu' : 'Open menu'}>{isOpen ? <FiX size={22} /> : <FiMenu size={22} />}</button></div>
+    </div>
+    {isOpen && <div className="border-t border-slate-200 bg-white px-6 py-5 dark:border-slate-800 dark:bg-slate-950 md:hidden"><nav className="flex flex-col gap-4">{navItems.map((item) => <NavLink key={item.href} to={item.href} onClick={close} className={linkClass}>{item.label}</NavLink>)}<Link to="/services" onClick={close} className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300"><FiGrid /> Browse all services</Link><div className="flex gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">{isAuthenticated ? <><Link to="/profile" onClick={close} className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold dark:border-slate-700">Profile</Link><button onClick={() => { logout(); close(); }} className="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white dark:bg-white dark:text-slate-900">Log out</button></> : <><Link to="/login" onClick={close} className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold dark:border-slate-700">Log in</Link><Link to="/register" onClick={close} className="flex-1 rounded-xl bg-emerald-500 px-4 py-3 text-center text-sm font-semibold text-white">Get started</Link></>}</div></nav></div>}
+  </motion.header>;
 }

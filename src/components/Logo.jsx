@@ -32,7 +32,7 @@ export default function Logo({ size = 'md', showText = false }) {
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
+          className="font-semibold text-lg tracking-tight text-slate-900 dark:text-white"
         >
           Aidora
         </motion.span>
