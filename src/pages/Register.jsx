@@ -4,13 +4,12 @@ import { FiArrowRight, FiEye, FiEyeOff, FiLock, FiMail, FiUser } from 'react-ico
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext.jsx';
-import api from '../services/api.js';
 import Logo from '../components/Logo.jsx';
 
 const passwordScore = (value) => [value.length >= 8, /[A-Z]/.test(value), /\d/.test(value)].filter(Boolean).length;
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', role: searchParams.get('role') || 'user' });
@@ -31,21 +30,16 @@ export default function Register() {
       await register({ name: form.name.trim(), email: form.email.trim(), password: form.password, role: form.role });
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'We could not create your account. Please try again.');
+      setError(err.message || 'We could not create your account. Please try again.');
     } finally { setLoading(false); }
   };
 
-  const googleSignup = () => {
-    if (!window.google || !import.meta.env.VITE_GOOGLE_CLIENT_ID) return toast.error('Google sign-up is not configured for this deployment.');
-    window.google.accounts.id.initialize({ client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID, callback: async ({ credential }) => {
-      try {
-        const payload = JSON.parse(atob(credential.split('.')[1]));
-        const response = await api.post('/auth/google', { googleId: payload.sub, email: payload.email, name: payload.name, profilePicture: payload.picture });
-        localStorage.setItem('token', response.data.token);
-        navigate('/');
-      } catch (err) { toast.error(err.response?.data?.message || 'Google sign-up failed.'); }
-    }});
-    window.google.accounts.id.prompt();
+  const googleSignup = async () => {
+    try {
+      await googleLogin();
+    } catch (err) {
+      toast.error('Google sign-up is unavailable right now. Please try again.');
+    }
   };
 
   return <main className="min-h-screen bg-[#f6f8f7] px-4 py-8 text-slate-900 dark:bg-slate-950 dark:text-white sm:px-6 lg:px-8">
