@@ -4,11 +4,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiMapPin } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import { openGoogleSignIn } from '../services/oauth.js';
 import api from '../services/api';
 
 export default function Login() {
-  const { login, geolocation } = useAuth();
+  const { login, googleLogin, geolocation } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,9 +35,13 @@ export default function Login() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    toast.loading('Opening secure Google sign-in...');
-    openGoogleSignIn();
+  const handleGoogleLogin = async () => {
+    const toastId = toast.loading('Opening secure Google sign-in...');
+    try {
+      await googleLogin();
+    } catch (err) {
+      toast.error('Google sign-in could not be started. Please try again.', { id: toastId });
+    }
   };
 
   const handleFacebookLogin = async () => {
