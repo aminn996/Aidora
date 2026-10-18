@@ -16,7 +16,7 @@ export default function Services() {
   const [minRating, setMinRating] = useState(0);
   const [selectedService, setSelectedService] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [userCity, setUserCity] = useState('Detecting…');
+  const [userCity, setUserCity] = useState('Your location');
   const [locationMode, setLocationMode] = useState('auto'); // 'auto' | 'manual'
   const [manualCity, setManualCity] = useState('');
   const [manualCoords, setManualCoords] = useState({ lat: null, lng: null });
@@ -133,8 +133,8 @@ export default function Services() {
         return;
       }
 
-      // Fallback to default Tunis coordinates
-      setUserCity('Tunis');
+      // Keep the location neutral when permission is unavailable.
+      setUserCity('Choose a location');
     };
 
     resolveCity();
