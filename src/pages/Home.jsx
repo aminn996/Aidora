@@ -1,327 +1,74 @@
-import { Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiMapPin, FiStar, FiShield, FiZap, FiBell, FiLock, FiArrowRight } from 'react-icons/fi';
-import useGeolocation from '../hooks/useGeolocation';
+import { FiArrowRight, FiCheck, FiMapPin, FiSearch, FiShield, FiStar, FiUsers, FiZap } from 'react-icons/fi';
 import Logo from '../components/Logo.jsx';
+import useGeolocation from '../hooks/useGeolocation';
+import { MARKET_CONFIG } from '../config/marketplace.js';
 
-// Service categories
-const SERVICE_CATEGORIES = [
-  { id: 1, name: 'Mechanics', emoji: '🚗', description: 'Car services & maintenance' },
-  { id: 2, name: 'Plumbing', emoji: '🔧', description: 'Plumbers & electricians' },
-  { id: 3, name: 'Home Services', emoji: '🏠', description: 'Maintenance & repairs' },
-  { id: 4, name: 'IT & Freelance', emoji: '🧑‍💻', description: 'Tech & freelance work' },
-  { id: 5, name: 'Delivery', emoji: '📦', description: 'Transport & delivery' },
-  { id: 6, name: 'Health', emoji: '🏥', description: 'Health & wellness' },
-  { id: 7, name: 'Education', emoji: '📚', description: 'Tutoring & courses' },
-  { id: 8, name: 'Cleaning', emoji: '🧹', description: 'Professional cleaning' },
-];
-
-const FEATURES = [
-  { icon: FiMapPin, title: 'Smart Location Matching', description: 'Services matched to your exact location' },
-  { icon: FiStar, title: 'Verified & Rated', description: 'All providers thoroughly vetted' },
-  { icon: FiShield, title: 'Secure Payments', description: 'Safe transactions in TND' },
-  { icon: FiZap, title: 'Fast & Responsive', description: 'Quick booking experience' },
-  { icon: FiBell, title: 'Real-time Notifications', description: 'Instant updates on services' },
-  { icon: FiLock, title: 'Secure Authentication', description: 'Your data is protected' },
-];
-
-const HOW_IT_WORKS = [
-  { step: 1, title: 'Choose Your Service', description: 'Browse our wide range of professional services' },
-  { step: 2, title: 'Get Matched Nearby', description: 'Discover vetted providers around you' },
-  { step: 3, title: 'Book & Rate', description: 'Book instantly and rate your experience' },
+const trustPoints = [
+  { icon: FiShield, title: 'Trusted professionals', text: 'Profiles, reviews, and verification signals help you choose with confidence.' },
+  { icon: FiMapPin, title: 'Location-aware matching', text: 'Discover relevant help in your city, wherever you are in the world.' },
+  { icon: FiZap, title: 'Simple from start to finish', text: 'Search, compare, request, and keep every conversation in one place.' },
 ];
 
 export default function Home() {
-  const [userCity, setUserCity] = useState(null);
-  const { coords, error: geoError } = useGeolocation();
+  const navigate = useNavigate();
+  const geo = useGeolocation();
+  const [service, setService] = useState('');
+  const [location, setLocation] = useState('');
+  const [country, setCountry] = useState(MARKET_CONFIG.defaultCountry.code);
 
-  useEffect(() => {
-    if (coords?.lat && coords?.lng) {
-      // Keep the location label honest until a reverse-geocoding result is available.
-      setUserCity('your area');
+  const selectedCountry = useMemo(
+    () => MARKET_CONFIG.countries.find((item) => item.code === country) || MARKET_CONFIG.defaultCountry,
+    [country],
+  );
+
+  function submitSearch(event) {
+    event.preventDefault();
+    const params = new URLSearchParams();
+    if (service.trim()) params.set('search', service.trim());
+    if (location.trim()) params.set('location', location.trim());
+    params.set('country', selectedCountry.code);
+    if (geo.coords) {
+      params.set('lat', geo.coords.lat);
+      params.set('lng', geo.coords.lng);
     }
-  }, [coords]);
+    navigate(`/services?${params.toString()}`);
+  }
 
   return (
-    <div className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
-
-      {/* Hero Section */}
-      <section className="relative w-full py-24 px-4 md:px-8 overflow-hidden bg-white dark:bg-gray-900">
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-20 right-20 w-72 h-72 bg-blue-100 dark:bg-blue-900/20 rounded-full blur-3xl opacity-40" />
-          <div className="absolute bottom-20 left-20 w-72 h-72 bg-indigo-100 dark:bg-indigo-900/20 rounded-full blur-3xl opacity-40" />
-        </div>
-
-        <div className="max-w-5xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="grid md:grid-cols-2 gap-12 items-center"
-          >
-            <div>
-              <h1 className="text-5xl md:text-6xl font-black text-gray-900 dark:text-white mb-4 leading-tight">
-                Find Trusted Services Near You
-              </h1>
-              <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-                Aidora connects you with verified professionals around you, based on your real-time location.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 mb-10">
-                <Link
-                  to="/register"
-                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  Get Started <FiArrowRight size={20} />
-                </Link>
-                <Link
-                  to="/services"
-                  className="px-8 py-3 border-2 border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 font-bold rounded-lg transition-colors"
-                >
-                  Explore Services
-                </Link>
+    <div className="bg-slate-50 text-slate-950">
+      <section className="relative overflow-hidden bg-[#102a43] text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(72,187,120,0.28),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(66,153,225,0.24),transparent_35%)]" />
+        <div className="relative mx-auto grid max-w-7xl gap-14 px-6 pb-20 pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8 lg:pb-28 lg:pt-24">
+          <div>
+            <div className="mb-8 flex items-center gap-3 text-sm font-semibold text-emerald-300"><Logo size="sm" showText /> <span className="rounded-full border border-white/20 px-3 py-1">Local help, anywhere</span></div>
+            <h1 className="max-w-3xl text-5xl font-semibold leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl">Find the right professional near you.</h1>
+            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-200">Discover trusted local professionals and get the help you need, wherever you are.</p>
+            <form onSubmit={submitSearch} className="mt-10 rounded-2xl bg-white p-3 text-slate-900 shadow-2xl shadow-slate-950/30 sm:p-4">
+              <div className="grid gap-3 lg:grid-cols-[1fr_1fr_0.7fr_auto]">
+                <label className="flex min-h-14 items-center gap-3 rounded-xl bg-slate-50 px-4"><FiSearch className="text-emerald-600" /><span className="sr-only">Service</span><input value={service} onChange={(event) => setService(event.target.value)} placeholder="What do you need?" className="w-full border-0 bg-transparent outline-none placeholder:text-slate-400" /></label>
+                <label className="flex min-h-14 items-center gap-3 rounded-xl bg-slate-50 px-4"><FiMapPin className="text-emerald-600" /><span className="sr-only">Location</span><input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="City or location" className="w-full border-0 bg-transparent outline-none placeholder:text-slate-400" /></label>
+                <label className="flex min-h-14 items-center rounded-xl bg-slate-50 px-4"><span className="sr-only">Country</span><select value={country} onChange={(event) => setCountry(event.target.value)} className="w-full border-0 bg-transparent outline-none"><option value="">Country</option>{MARKET_CONFIG.countries.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
+                <button className="min-h-14 rounded-xl bg-emerald-500 px-6 font-semibold text-white transition hover:bg-emerald-600" type="submit">Find help <FiArrowRight className="ml-2 inline" /></button>
               </div>
-
-              <div className="grid grid-cols-3 gap-6">
-                <div>
-                  <p className="text-3xl font-bold text-blue-600">100+</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Services</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-bold text-blue-600">500+</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Providers</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-bold text-blue-600">4.8★</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Rating</p>
-                </div>
-              </div>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="flex justify-center"
-            >
-              <Logo size="xl" showText={false} />
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Location Section */}
-      <section className="w-full py-12 px-4 md:px-8 bg-blue-50 dark:bg-gray-800">
-        <div className="max-w-5xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="flex items-center justify-center gap-4"
-          >
-            <FiMapPin className="text-blue-600 text-2xl flex-shrink-0" />
-            <div>
-              <p className="text-lg font-bold text-gray-900 dark:text-white">
-                Showing services near {userCity || 'your location'}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                {geoError ? 'Enable location for best results' : 'Location enabled'}
-              </p>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Services Grid */}
-      <section className="w-full py-20 px-4 md:px-8 bg-white dark:bg-gray-900">
-        <div className="max-w-5xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-14"
-          >
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white mb-3">Browse Services</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">Find exactly what you need</p>
-          </motion.div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {SERVICE_CATEGORIES.map((cat, i) => (
-              <motion.div
-                key={cat.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.05 }}
-                viewport={{ once: true }}
-                whileHover={{ y: -8 }}
-              >
-                <Link to={`/services?category=${cat.name}`}>
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 p-6 rounded-lg text-center hover:shadow-lg transition-shadow cursor-pointer">
-                    <div className="text-4xl mb-3">{cat.emoji}</div>
-                    <h3 className="font-bold text-gray-900 dark:text-white mb-1">{cat.name}</h3>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">{cat.description}</p>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+              <div className="mt-3 flex flex-wrap items-center gap-3 px-1 text-xs text-slate-500"><button type="button" onClick={() => geo.refresh?.()} className="font-semibold text-slate-700 hover:text-emerald-600"><FiMapPin className="mr-1 inline" /> Use my current location</button><span>Popular: plumber, cleaner, computer repair</span></div>
+            </form>
           </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="w-full py-20 px-4 md:px-8 bg-gray-50 dark:bg-gray-800">
-        <div className="max-w-5xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-14"
-          >
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white mb-3">Why Choose Aidora</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">Everything you need for trusted services</p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((feature, i) => {
-              const Icon = feature.icon;
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  viewport={{ once: true }}
-                  className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
-                    <Icon className="text-blue-600 dark:text-blue-400 text-xl" />
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{feature.title}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">{feature.description}</p>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="w-full py-20 px-4 md:px-8 bg-white dark:bg-gray-900">
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-14"
-          >
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white mb-3">How It Works</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">Three simple steps</p>
-          </motion.div>
-
-          <div className="flex flex-col md:flex-row items-stretch gap-8">
-            {HOW_IT_WORKS.map((item, i) => (
-              <div key={item.step} className="flex-1 flex flex-col">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  viewport={{ once: true }}
-                  className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-full w-14 h-14 flex items-center justify-center font-bold text-xl mb-4"
-                >
-                  {item.step}
-                </motion.div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{item.title}</h3>
-                <p className="text-gray-600 dark:text-gray-400">{item.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Auth Section */}
-      <section className="w-full py-16 px-4 md:px-8 bg-gray-50 dark:bg-gray-800">
-        <div className="max-w-md mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-8"
-          >
-            <h3 className="text-2xl font-black text-gray-900 dark:text-white">Quick Sign In</h3>
-            <p className="text-gray-600 dark:text-gray-300 mt-2">Choose your preferred method</p>
-          </motion.div>
-
-          <div className="space-y-3">
-            <button className="w-full py-3 px-4 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-bold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12.545 10.866v3.471h5.183c-0.305 1.584-1.639 4.649-5.183 4.649-3.119 0-5.668-2.589-5.668-5.77 0-3.179 2.548-5.77 5.668-5.77 1.779 0 2.971 0.758 3.652 1.413 0.787-0.758 0.728-0.868 2.749-2.82-1.194-1.113-3.069-1.789-6.401-1.789-5.314 0-9.668 4.354-9.668 9.769 0 5.416 4.354 9.769 9.668 9.769 5.576 0 9.294-3.925 9.294-9.45 0-0.618-0.069-1.092-0.154-1.563h-9.146z" />
-              </svg>
-              Google
-            </button>
-
-            <button className="w-full py-3 px-4 border-2 border-gray-300 dark:border-gray-600 rounded-lg font-bold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z" />
-              </svg>
-              Facebook
-            </button>
-
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300 dark:border-gray-600" />
-              </div>
-              <div className="relative flex justify-center">
-                <span className="px-2 bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-400">Or</span>
-              </div>
-            </div>
-
-            <Link
-              to="/register"
-              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors text-center"
-            >
-              Create Account
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="w-full py-20 px-4 md:px-8 bg-gradient-to-r from-blue-600 to-indigo-600">
-        <div className="max-w-3xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Ready to Get Started?</h2>
-            <p className="text-xl text-blue-100 mb-8">
-              Join thousands finding quality services instantly
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/register"
-                className="px-8 py-3 bg-white text-blue-600 font-bold rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                Create Account
-              </Link>
-              <Link
-                to="/services"
-                className="px-8 py-3 border-2 border-white text-white font-bold rounded-lg hover:bg-white/10 transition-colors"
-              >
-                Browse Services
-              </Link>
-            </div>
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm sm:p-8">
+            <div className="flex items-center justify-between border-b border-white/10 pb-5"><div><p className="text-sm text-slate-300">A better way to get things done</p><h2 className="mt-1 text-2xl font-semibold">Built around trust</h2></div><Logo size="lg" showText={false} /></div>
+            <div className="grid gap-4 pt-6 sm:grid-cols-2"><div className="rounded-2xl bg-white/10 p-5"><FiUsers className="text-emerald-300" /><p className="mt-8 text-3xl font-semibold">25+</p><p className="text-sm text-slate-300">cities ready to grow</p></div><div className="rounded-2xl bg-white/10 p-5"><FiStar className="text-amber-300" /><p className="mt-8 text-3xl font-semibold">4.8/5</p><p className="text-sm text-slate-300">community rating</p></div></div>
+            <div className="mt-5 flex items-center gap-3 text-sm text-slate-200"><span className="flex size-8 items-center justify-center rounded-full bg-emerald-400/20 text-emerald-300"><FiCheck /></span> A global platform that started in Tunisia.</div>
           </motion.div>
         </div>
       </section>
+
+      <section id="how-it-works" className="mx-auto max-w-7xl px-6 py-20 lg:px-8"><div className="max-w-2xl"><p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">One trusted place</p><h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Whatever you need, there is someone nearby who can help.</h2></div><div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{trustPoints.map(({ icon: Icon, title, text }) => <div key={title} className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm"><div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600"><Icon /></div><h3 className="mt-6 text-xl font-semibold">{title}</h3><p className="mt-3 leading-7 text-slate-600">{text}</p></div>)}</div></section>
+
+      <section className="bg-white"><div className="mx-auto max-w-7xl px-6 py-20 lg:px-8"><div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><div><p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">Explore by need</p><h2 className="mt-3 text-3xl font-semibold tracking-tight">Start with a category</h2></div><Link to="/services" className="font-semibold text-emerald-700">View all services <FiArrowRight className="ml-1 inline" /></Link></div><div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{MARKET_CONFIG.categories.map((category) => <Link key={category.slug} to={`/services?category=${encodeURIComponent(category.name)}`} className="group rounded-2xl border border-slate-200 p-6 transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg"><div className="flex items-center justify-between"><h3 className="font-semibold">{category.name}</h3><FiArrowRight className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-emerald-600" /></div><p className="mt-2 text-sm leading-6 text-slate-500">{category.description}</p></Link>)}</div></div></section>
+
+      <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8"><div className="rounded-[2rem] bg-emerald-500 px-7 py-10 text-white sm:px-12 sm:py-14"><div className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-center"><div><h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Ready to get started?</h2><p className="mt-3 max-w-xl text-emerald-50">Join people finding reliable help and professionals building their reputation on Aidora.</p></div><div className="flex flex-wrap gap-3"><Link to="/register" className="rounded-xl bg-white px-5 py-3 font-semibold text-emerald-700 hover:bg-emerald-50">Create an account</Link><Link to="/register?role=provider" className="rounded-xl border border-white/50 px-5 py-3 font-semibold hover:bg-white/10">Become a provider</Link></div></div></div></section>
     </div>
   );
 }
