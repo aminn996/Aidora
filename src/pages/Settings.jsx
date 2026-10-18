@@ -29,8 +29,8 @@ const DEFAULT_NOTIFICATIONS = {
 
 const DEFAULT_PREFERENCES = {
   language: 'en',
-  currency: 'TND',
-  timeZone: 'Africa/Tunis',
+  currency: 'USD',
+  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   distanceUnit: 'km',
   theme: 'system',
 };
