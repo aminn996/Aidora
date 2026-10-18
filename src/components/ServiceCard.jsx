@@ -23,7 +23,7 @@ const getCategoryImage = (category) => {
 export default function ServiceCard({ service }) {
   const navigate = useNavigate();
   const distance = service.distance ? service.distance.toFixed(1) : 'N/A';
-  const isAvailable = service.availability && service.availability.length > 0;
+  const isAvailable = Array.isArray(service.availability) && service.availability.length > 0;
 
   const goToDetails = () => {
     const id = service._id || service.id;
@@ -55,7 +55,7 @@ export default function ServiceCard({ service }) {
           className="absolute top-4 right-4 bg-white dark:bg-gray-900 px-4 py-2 rounded-full text-sm font-bold text-blue-600 dark:text-blue-400 shadow-lg flex items-center gap-1"
         >
           <span className="text-lg">💰</span>
-          {service.price?.toFixed(0) || '0'} TND
+          {service.price != null ? Number(service.price).toFixed(2) : 'Quote'} {service.currency || 'EUR'}
         </motion.div>
 
         {/* Availability Badge */}

@@ -30,7 +30,7 @@ export default function Register() {
       await register({ name: form.name.trim(), email: form.email.trim(), password: form.password, role: form.role });
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'We could not create your account. Please try again.');
+      setError(err.message || 'We could not create your account. Please try again.');
     } finally { setLoading(false); }
   };
 

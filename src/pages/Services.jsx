@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiMapPin, FiFilter, FiDollarSign, FiX, FiChevronDown, FiStar, FiPhone, FiMail, FiCrosshair } from 'react-icons/fi';
-import api from '../services/api.js';
 import ServiceCard from '../components/ServiceCard.jsx';
+import { supabase } from '../services/supabase.js';
 import useGeolocation from '../hooks/useGeolocation';
 
 export default function Services() {
@@ -154,9 +154,29 @@ export default function Services() {
 
   const fetchServices = async () => {
     try {
-      const res = await api.get('/services');
-      const servicesData = res.data.services || res.data.data || res.data || [];
-      console.log('Fetched services:', servicesData);
+      const { data, error } = await supabase
+        .from('services')
+        .select('*, provider_profiles!inner(id, business_name, slug, profile_image, city, country, latitude, longitude, reviews(rating))')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const servicesData = (data || []).map((service) => {
+        const provider = service.provider_profiles;
+        const ratings = provider?.reviews || [];
+        const rating = ratings.length ? ratings.reduce((sum, review) => sum + review.rating, 0) / ratings.length : 0;
+        return {
+          ...service,
+          _id: service.id,
+          createdAt: service.created_at,
+          provider: { name: provider?.business_name, slug: provider?.slug },
+          location: provider?.longitude != null && provider?.latitude != null
+            ? { coordinates: [provider.longitude, provider.latitude] }
+            : null,
+          rating,
+          totalReviews: ratings.length,
+          availability: service.availability || [],
+        };
+      });
       const servicesWithDistance = servicesData.map(service => {
         let distance = null;
         if (userLocation && service.location?.coordinates) {
