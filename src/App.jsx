@@ -12,6 +12,7 @@ import Register from './pages/Register.jsx';
 import Services from './pages/Services.jsx';
 import ServiceDetails from './pages/ServiceDetails.jsx';
 import ProviderServices from './pages/ProviderServices.jsx';
+import ProviderOnboarding from './pages/ProviderOnboarding.jsx';
 import CreateService from './pages/CreateService.jsx';
 import Bookings from './pages/Bookings.jsx';
 import Profile from './pages/Profile.jsx';
@@ -87,6 +88,22 @@ function AppContent() {
           />
 
           {/* Protected Provider Routes */}
+          <Route
+            path="/provider/onboarding"
+            element={
+              <ProtectedRoute roles={['user', 'provider', 'admin']}>
+                <ProviderOnboarding />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/provider/dashboard"
+            element={
+              <ProtectedRoute roles={['provider', 'admin']}>
+                <ProviderDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/provider"
             element={
