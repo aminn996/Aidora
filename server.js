@@ -26,7 +26,7 @@ app.use(cors({ origin: origins.length ? origins : true, credentials: true }));
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: true }));
 
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
-const userSchema = z.object({ name: z.string().trim().min(2).max(100), email: z.string().email().transform((v) => v.toLowerCase()), password: z.string().min(8).max(128), role: z.enum(['client', 'provider']).optional() });
+const userSchema = z.object({ name: z.string().trim().min(2).max(100), email: z.string().email().transform((v) => v.toLowerCase()), password: z.string().min(8).max(128) });
 const serviceSchema = z.object({ title: z.string().trim().min(2).max(120), description: z.string().trim().max(2000).optional(), category: z.string().trim().min(2).max(60), price: z.coerce.number().min(0), image: z.string().url().optional().or(z.literal('')) });
 
 function sign(user) { return jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' }); }
@@ -42,7 +42,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', database: 'neon', 
 app.post('/api/auth/register', asyncRoute(async (req, res) => {
   const input = userSchema.parse(req.body);
   const hash = await bcrypt.hash(input.password, 12);
-  const result = await pool.query('INSERT INTO users (name,email,password_hash,role) VALUES ($1,$2,$3,$4) RETURNING id,name,email,role,phone,profile_picture,location,created_at,updated_at', [input.name, input.email, hash, input.role || 'client']);
+  const result = await pool.query('INSERT INTO users (name,email,password_hash,role) VALUES ($1,$2,$3,$4) RETURNING id,name,email,role,phone,profile_picture,location,created_at,updated_at', [input.name, input.email, hash, 'client']);
   const user = result.rows[0]; res.status(201).json({ user, token: sign(user) });
 }));
 app.post('/api/auth/login', asyncRoute(async (req, res) => {

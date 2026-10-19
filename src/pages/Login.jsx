@@ -4,7 +4,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiMapPin } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import api from '../services/api';
 
 export default function Login() {
   const { login, googleLogin, geolocation } = useAuth();

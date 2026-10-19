@@ -19,7 +19,7 @@ import {
   FiTrash2,
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import api from '../services/api';
+import { supabase } from '../services/supabase';
 import { useAuth } from '../context/AuthContext';
 
 const STEPS = [
@@ -60,7 +60,7 @@ export default function CreateService() {
     description: '',
     category: '',
     price: '',
-    currency: 'TND',
+    currency: 'EUR',
     priceType: 'fixed',
     pricingTiers: [],
     serviceType: 'onsite',
@@ -74,7 +74,7 @@ export default function CreateService() {
     videoUrl: '',
     location: {
       type: 'Point',
-      coordinates: [10.1815, 36.8065], // default Tunis
+      coordinates: [0, 0],
       address: '',
       serviceRadius: 10,
     },
@@ -297,8 +297,23 @@ export default function CreateService() {
         },
       };
 
-      await api.post('/services', payload);
-      toast.success('Service created successfully!');
+      const { data: provider, error: providerError } = await supabase.from('provider_profiles').select('id').eq('user_id', user.id).maybeSingle();
+      if (providerError) throw providerError;
+      if (!provider) throw new Error('Create your provider profile before listing a service.');
+      const { error } = await supabase.from('services').insert({
+        provider_id: provider.id,
+        category: payload.category,
+        title: payload.title.trim(),
+        description: payload.description.trim(),
+        price: payload.price,
+        currency: payload.currency,
+        pricing_type: payload.priceType === 'hourly' ? 'HOURLY' : 'FIXED',
+        country: user.profile?.country || null,
+        city: user.profile?.city || null,
+        is_active: false,
+      });
+      if (error) throw error;
+      toast.success('Service submitted for review.');
       navigate('/provider/services');
     } catch (err) {
       console.error(err);
