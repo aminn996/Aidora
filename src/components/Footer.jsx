@@ -90,7 +90,7 @@ export default function Footer() {
         {/* Divider */}
         <div className="border-t border-gray-800 dark:border-gray-700 pt-8">
           <p className="text-center text-gray-400 text-sm">
-            © {year} Aidora. All rights reserved. | crafted with ❤️ for Tunisia 🇹🇳
+            © {year} Aidora. All rights reserved. | crafted for communities everywhere
           </p>
         </div>
       </div>

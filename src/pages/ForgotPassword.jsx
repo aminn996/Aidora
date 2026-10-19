@@ -3,104 +3,44 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiMail, FiCheckCircle, FiArrowLeft } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import api from '../services/api';
+import { supabase } from '../services/supabase';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [serverMessage, setServerMessage] = useState('');
-  const [devToken, setDevToken] = useState('');
+  const [sent, setSent] = useState(false);
   const navigate = useNavigate();
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    setServerMessage('');
-    setDevToken('');
+  const onSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
-    try {
-      const res = await api.post('/auth/forgot-password', { email });
-      setServerMessage(res.data?.message || 'If an account exists, reset instructions were sent.');
-      if (res.data?.resetToken) {
-        setDevToken(res.data.resetToken);
-      }
-      toast.success('Check your email for reset link');
-    } catch (err) {
-      const msg = err?.response?.data?.message || 'Unable to process request';
-      toast.error(msg);
-      setServerMessage(msg);
-    } finally {
-      setLoading(false);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error('We could not send the reset email. Please try again.');
+      return;
     }
+    setSent(true);
+    toast.success('Check your email for a secure reset link.');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8"
-        >
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-4 hover:text-blue-600"
-          >
-            <FiArrowLeft /> Back
-          </button>
-
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Forgot password</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Enter your account email and we'll send a reset link.
-          </p>
-
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
-              <div className="relative">
-                <FiMail className="absolute left-3 top-3 text-gray-400" size={20} />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                  className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:border-blue-600 transition"
-                />
-              </div>
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={loading}
-              className={`w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-            >
-              {loading ? 'Sending...' : 'Send reset link'}
-            </motion.button>
-          </form>
-
-          {serverMessage && (
-            <div className="mt-4 flex items-start gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200">
-              <FiCheckCircle className="mt-0.5" />
-              <div>
-                <p className="font-semibold">{serverMessage}</p>
-                {devToken && (
-                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                    Dev token: {devToken}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <p className="mt-6 text-sm text-gray-600 dark:text-gray-400 text-center">
-            Remembered your password?{' '}
-            <Link to="/login" className="text-blue-600 font-semibold hover:underline">Sign in</Link>
-          </p>
-        </motion.div>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 dark:bg-slate-950">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+        <button onClick={() => navigate(-1)} className="mb-8 flex items-center gap-2 text-sm text-slate-500 hover:text-emerald-600"><FiArrowLeft /> Back</button>
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">Reset your password</h1>
+        <p className="mt-2 text-slate-500 dark:text-slate-400">Enter your email and we&apos;ll send a secure reset link.</p>
+        <form onSubmit={onSubmit} className="mt-8 space-y-5">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email
+            <div className="relative mt-2"><FiMail className="absolute left-3 top-3.5 text-slate-400" /><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="you@example.com" /></div>
+          </label>
+          <button disabled={loading} className="w-full rounded-xl bg-emerald-500 py-3 font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-60">{loading ? 'Sending…' : 'Send reset link'}</button>
+        </form>
+        {sent && <div className="mt-5 flex gap-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"><FiCheckCircle className="mt-0.5 shrink-0" /> If an account exists, reset instructions are on their way.</div>}
+        <p className="mt-6 text-center text-sm text-slate-500">Remembered it? <Link to="/login" className="font-semibold text-emerald-600">Sign in</Link></p>
+      </motion.div>
     </div>
   );
 }
