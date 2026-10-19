@@ -10,7 +10,7 @@ export default function useGeolocation() {
   const [source, setSource] = useState(null); // 'gps' | 'ip' | 'default'
   const [timestamp, setTimestamp] = useState(null);
   const [address, setAddress] = useState(null); // Reverse geocoded address
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const watchIdRef = useRef(null);
 
   // Load from cache first
@@ -187,17 +187,6 @@ export default function useGeolocation() {
     }
   };
 
-  // Initial fetch
-  useEffect(() => {
-    if (!GEOLOCATION_CONFIG.FEATURES.autoStart) return;
-    
-    refresh();
-    if (GEOLOCATION_CONFIG.FEATURES.watchPosition) {
-      startWatch();
-    }
-    
-    return () => stopWatch();
-  }, []);
 
   return {
     coords,

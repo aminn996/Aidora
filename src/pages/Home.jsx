@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiArrowRight, FiCheck, FiMapPin, FiSearch, FiShield, FiStar, FiUsers, FiZap } from 'react-icons/fi';
 import Logo from '../components/Logo.jsx';
-import useGeolocation from '../hooks/useGeolocation';
 import { MARKET_CONFIG } from '../config/marketplace.js';
 
 const trustPoints = [
@@ -14,9 +13,11 @@ const trustPoints = [
 
 export default function Home() {
   const navigate = useNavigate();
-  const geo = useGeolocation();
   const [service, setService] = useState('');
   const [location, setLocation] = useState('');
+  const [detectedCoords, setDetectedCoords] = useState(null);
+  const [locationStatus, setLocationStatus] = useState('');
+  const [locationLoading, setLocationLoading] = useState(false);
   const [country, setCountry] = useState(MARKET_CONFIG.defaultCountry.code);
 
   const selectedCountry = useMemo(
@@ -24,15 +25,46 @@ export default function Home() {
     [country],
   );
 
+  function requestCurrentLocation() {
+    if (!navigator.geolocation) {
+      setLocationStatus('Location is not supported by this browser.');
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationStatus('Requesting your location…');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setDetectedCoords(coords);
+        setLocationLoading(false);
+        setLocationStatus('Location detected successfully.');
+      },
+      (error) => {
+        setLocationLoading(false);
+        const messages = {
+          1: 'Location permission was denied. Allow location access in your browser settings and try again.',
+          2: 'Your location is currently unavailable. Check your connection or device location settings.',
+          3: 'Location request timed out. Please try again.',
+        };
+        setLocationStatus(messages[error.code] || 'Unable to detect your location. Please try again.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  }
+
   function submitSearch(event) {
     event.preventDefault();
     const params = new URLSearchParams();
     if (service.trim()) params.set('search', service.trim());
     if (location.trim()) params.set('location', location.trim());
     params.set('country', selectedCountry.code);
-    if (geo.coords) {
-      params.set('lat', geo.coords.lat);
-      params.set('lng', geo.coords.lng);
+    if (detectedCoords) {
+      params.set('lat', detectedCoords.lat);
+      params.set('lng', detectedCoords.lng);
     }
     navigate(`/services?${params.toString()}`);
   }
@@ -53,7 +85,7 @@ export default function Home() {
                 <label className="flex min-h-14 items-center rounded-xl bg-slate-50 px-4"><span className="sr-only">Country</span><select value={country} onChange={(event) => setCountry(event.target.value)} className="w-full border-0 bg-transparent outline-none"><option value="">Country</option>{MARKET_CONFIG.countries.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
                 <button className="min-h-14 rounded-xl bg-emerald-500 px-6 font-semibold text-white transition hover:bg-emerald-600" type="submit">Find help <FiArrowRight className="ml-2 inline" /></button>
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-3 px-1 text-xs text-slate-500"><button type="button" onClick={() => geo.refresh?.()} className="font-semibold text-slate-700 hover:text-emerald-600"><FiMapPin className="mr-1 inline" /> Use my current location</button><span>Popular: plumber, cleaner, computer repair</span></div>
+              <div className="mt-3 flex flex-wrap items-center gap-3 px-1 text-xs text-slate-500"><button type="button" onClick={requestCurrentLocation} disabled={locationLoading} className="font-semibold text-slate-700 hover:text-emerald-600 disabled:cursor-wait disabled:opacity-60"><FiMapPin className="mr-1 inline" /> {locationLoading ? 'Requesting location…' : 'Use my current location'}</button>{locationStatus && <span role="status" aria-live="polite" className="basis-full text-slate-600">{locationStatus}</span>}<span>Popular: plumber, cleaner, computer repair</span></div>
             </form>
           </div>
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm sm:p-8">
