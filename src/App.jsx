@@ -15,6 +15,8 @@ import ServiceDetails from './pages/ServiceDetails.jsx';
 import ProviderServices from './pages/ProviderServices.jsx';
 import ProviderOnboarding from './pages/ProviderOnboarding.jsx';
 import CreateService from './pages/CreateService.jsx';
+import ProviderLocation from './pages/ProviderLocation.jsx';
+import ProviderReviews from './pages/ProviderReviews.jsx';
 import Bookings from './pages/Bookings.jsx';
 import Profile from './pages/Profile.jsx';
 import Settings from './pages/Settings.jsx';
@@ -131,6 +133,8 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          <Route path="/provider/location" element={<ProtectedRoute roles={['provider', 'admin']}><ProviderLocation /></ProtectedRoute>} />
+          <Route path="/provider/reviews" element={<ProtectedRoute roles={['provider', 'admin']}><ProviderReviews /></ProtectedRoute>} />
           <Route
             path="/provider/services/create"
             element={
