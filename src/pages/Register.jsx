@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiArrowRight, FiEye, FiEyeOff, FiLock, FiMail, FiUser } from 'react-icons/fi';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext.jsx';
 import Logo from '../components/Logo.jsx';
@@ -9,12 +9,19 @@ import Logo from '../components/Logo.jsx';
 const passwordScore = (value) => [value.length >= 8, /[A-Z]/.test(value), /\d/.test(value)].filter(Boolean).length;
 
 export default function Register() {
-  const { register, googleLogin } = useAuth();
+  const { user, isAuthenticated, register, googleLogin } = useAuth();
   const navigate = useNavigate();
-   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [searchParams] = useSearchParams();
+  const intent = searchParams.get('intent') === 'provider' ? 'provider' : 'customer';
+  const [accountType, setAccountType] = useState(intent);
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isAuthenticated && user) navigate(accountType === 'provider' ? '/provider/onboarding' : '/dashboard', { replace: true });
+  }, [isAuthenticated, user, accountType]);
 
   const update = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
   const score = passwordScore(form.password);
@@ -27,7 +34,7 @@ export default function Register() {
     setLoading(true);
     try {
       await register({ name: form.name.trim(), email: form.email.trim(), password: form.password });
-      navigate('/');
+      navigate(accountType === 'provider' ? '/provider/onboarding' : '/dashboard');
     } catch (err) {
       setError(err.message || 'We could not create your account. Please try again.');
     } finally { setLoading(false); }
@@ -35,7 +42,7 @@ export default function Register() {
 
   const googleSignup = async () => {
     try {
-      await googleLogin();
+      await googleLogin(`${window.location.origin}/register?intent=${accountType}`);
     } catch (err) {
       toast.error('Google sign-up is unavailable right now. Please try again.');
     }
@@ -52,6 +59,7 @@ export default function Register() {
         <div className="mb-8 lg:hidden"><Logo /></div><p className="text-sm font-semibold text-aidora-green">JOIN AIDORA</p><h2 className="mt-2 text-3xl font-bold tracking-tight">Create your Aidora account</h2><p className="mt-2 text-slate-500 dark:text-slate-400">One account for finding help and growing your professional business.</p>
         <button type="button" onClick={googleSignup} className="mt-8 flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 font-semibold transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"><span className="text-lg font-bold text-[#4285f4]">G</span> Continue with Google</button>
         <div className="my-7 flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-slate-400"><span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />or continue with email<span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" /></div>
+        <div className="mt-6"><p className="text-sm font-semibold">How will you use Aidora?</p><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => setAccountType('customer')} className={`rounded-xl border p-3 text-sm font-semibold ${accountType === 'customer' ? 'border-aidora-green bg-aidora-green/10 text-aidora-green' : 'border-slate-200 dark:border-slate-700'}`}>Find services</button><button type="button" onClick={() => setAccountType('provider')} className={`rounded-xl border p-3 text-sm font-semibold ${accountType === 'provider' ? 'border-aidora-green bg-aidora-green/10 text-aidora-green' : 'border-slate-200 dark:border-slate-700'}`}>Offer services</button></div></div>
         <form onSubmit={onSubmit} className="space-y-4">
           {[['name','Full name',FiUser,'Alex Morgan'],['email','Email address',FiMail,'you@example.com']].map(([key,label,Icon,placeholder]) => <label key={key} className="block text-sm font-medium">{label}<span className="ml-1 text-aidora-green">*</span><div className="relative mt-2"><Icon className="absolute left-4 top-3.5 text-slate-400" /><input aria-label={label} required type={key === 'email' ? 'email' : 'text'} value={form[key]} onChange={update(key)} placeholder={placeholder} className="h-12 w-full rounded-xl border border-slate-200 bg-transparent pl-11 pr-4 outline-none transition focus:border-aidora-green focus:ring-4 focus:ring-aidora-green/10 dark:border-slate-700" /></div></label>)}
           <label className="block text-sm font-medium">Password<span className="ml-1 text-aidora-green">*</span><div className="relative mt-2"><FiLock className="absolute left-4 top-3.5 text-slate-400" /><input required minLength="8" aria-label="Password" type={showPassword ? 'text' : 'password'} value={form.password} onChange={update('password')} className="h-12 w-full rounded-xl border border-slate-200 bg-transparent pl-11 pr-12 outline-none focus:border-aidora-green focus:ring-4 focus:ring-aidora-green/10 dark:border-slate-700" /><button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((v) => !v)} className="absolute right-3 top-3 p-1 text-slate-400">{showPassword ? <FiEyeOff /> : <FiEye />}</button></div><div className="mt-2 flex gap-1">{[0,1,2].map((item) => <span key={item} className={`h-1.5 flex-1 rounded-full ${score > item ? 'bg-aidora-green' : 'bg-slate-200 dark:bg-slate-700'}`} />)}</div></label>

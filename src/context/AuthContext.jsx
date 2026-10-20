@@ -63,8 +63,8 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    await hydrateUser(data.user);
-    return data;
+    const nextUser = await hydrateUser(data.user);
+    return { ...data, user: nextUser };
   }, [hydrateUser]);
 
   const register = useCallback(async (payload) => {
@@ -85,11 +85,11 @@ export function AuthProvider({ children }) {
     return data;
   }, [hydrateUser]);
 
-  const googleLogin = useCallback(async () => {
+  const googleLogin = useCallback(async (redirectTo) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/login`,
+        redirectTo: redirectTo || import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/login`,
       },
     });
     if (error) throw error;
