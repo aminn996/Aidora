@@ -14,7 +14,7 @@ import {
   FiEyeOff,
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import api from '../services/api';
+import { supabase } from '../services/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useDarkMode } from '../context/DarkModeContext';
 import GuestSettings from './GuestSettings';
@@ -209,7 +209,7 @@ export default function Settings() {
       });
       if (preferences.theme === 'dark' && !isDarkMode) toggleDarkMode();
       if (preferences.theme === 'light' && isDarkMode) toggleDarkMode();
-      localStorage.setItem('aidora-language', preferences.language);
+
       toast.success('Preferences saved');
     } catch (err) {
       console.error(err);
@@ -231,14 +231,12 @@ export default function Settings() {
     }
     setSavingPrefs(true);
     try {
-      await api.put('/auth/change-password', {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
-      });
+      const { error } = await supabase.auth.updateUser({ password: passwordForm.newPassword });
+      if (error) throw error;
       toast.success('Password changed');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to change password');
+      toast.error(err?.message || 'Failed to change password');
     } finally {
       setSavingPrefs(false);
     }
