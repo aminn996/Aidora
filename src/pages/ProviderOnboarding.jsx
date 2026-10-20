@@ -20,7 +20,7 @@ export default function ProviderOnboarding() {
     if (!user?.id) return toast.error('Please sign in before continuing.');
     setSaving(true);
     try {
-      const { error } = await supabase.from('provider_applications').insert({
+      const application = {
         user_id: user.id,
         category: form.category,
         description: form.description.trim(),
@@ -28,10 +28,16 @@ export default function ProviderOnboarding() {
         experience: form.experience.trim() || null,
         country: form.country.trim() || null,
         city: form.city.trim() || null,
-      });
+      };
+      const { data: existing, error: lookupError } = await supabase.from('provider_applications').select('id, status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (lookupError) throw lookupError;
+      const query = existing?.id
+        ? supabase.from('provider_applications').update({ ...application, updated_at: new Date().toISOString() }).eq('id', existing.id)
+        : supabase.from('provider_applications').insert(application);
+      const { error } = await query;
       if (error) throw error;
-      toast.success('Your provider application was submitted.');
-      navigate('/provider/dashboard');
+      toast.success('Your provider application was submitted for review.');
+      navigate('/provider/onboarding');
     } catch (error) {
       toast.error(error.message || 'We could not submit your application.');
     } finally {
