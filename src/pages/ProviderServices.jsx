@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiPlus, FiEdit2, FiTrash2, FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
-import api from '../services/api.js';
+import { supabase } from '../services/supabase.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const categories = [
   'Home & Maintenance', 'Automotive', 'Technology & Electronics',
@@ -18,6 +19,8 @@ const availabilityOptions = [
 
 export default function ProviderServices() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [providerId, setProviderId] = useState(null);
   const [services, setServices] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,16 +35,18 @@ export default function ProviderServices() {
     icon: '🔧'
   });
 
-  useEffect(() => {
-    fetchServices();
-    fetchBookings();
-  }, []);
+  useEffect(() => { fetchServices(); }, [user?.id]);
 
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/services/my-services');
-      setServices(res.data.services || []);
+      const { data: provider, error: providerError } = await supabase.from('provider_profiles').select('id').eq('user_id', user?.id).maybeSingle();
+      if (providerError) throw providerError;
+      setProviderId(provider?.id || null);
+      if (!provider) { setServices([]); return; }
+      const { data, error } = await supabase.from('services').select('*').eq('provider_id', provider.id).order('created_at', { ascending: false });
+      if (error) throw error;
+      setServices(data || []);
     } catch (err) {
       console.error('Error fetching services:', err);
       toast.error('Failed to load services');
@@ -50,14 +55,7 @@ export default function ProviderServices() {
     }
   };
 
-  const fetchBookings = async () => {
-    try {
-      const res = await api.get('/bookings/provider/bookings');
-      setBookings(res.data.bookings || []);
-    } catch (err) {
-      console.error('Error fetching bookings:', err);
-    }
-  };
+  const fetchBookings = async () => { setBookings([]); };
 
   const handleAcceptBooking = async (bookingId) => {
     try {
@@ -91,10 +89,10 @@ export default function ProviderServices() {
 
     try {
       if (editingService) {
-        await api.put(`/services/${editingService._id}`, formData);
+        const { error } = await supabase.from('services').update({ title: formData.title, description: formData.description, category: formData.category, price: Number(formData.price) || null }).eq('id', editingService.id).eq('provider_id', providerId); if (error) throw error;
         toast.success('Service updated successfully');
       } else {
-        await api.post('/services', formData);
+        const { error } = await supabase.from('services').insert({ provider_id: providerId, title: formData.title, description: formData.description, category: formData.category, price: Number(formData.price) || null, pricing_type: 'FIXED', currency: 'EUR', is_active: false }); if (error) throw error;
         toast.success('Service created successfully');
       }
       
@@ -132,7 +130,7 @@ export default function ProviderServices() {
     if (!window.confirm('Are you sure you want to delete this service?')) return;
 
     try {
-      await api.delete(`/services/${id}`);
+      const { error } = await supabase.from('services').delete().eq('id', id).eq('provider_id', providerId); if (error) throw error;
       toast.success('Service deleted successfully');
       fetchServices();
     } catch (err) {

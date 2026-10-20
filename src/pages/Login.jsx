@@ -1,32 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiMapPin } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 export default function Login() {
-  const { login, googleLogin, geolocation } = useAuth();
+  const { user, isAuthenticated, login, googleLogin, geolocation } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const destination = (roleOverride) => {
+    const redirect = new URLSearchParams(location.search).get('redirect');
+    if (redirect?.startsWith('/') && !redirect.startsWith('//')) return redirect;
+    if ((roleOverride || user?.role) === 'admin') return '/admin';
+    if ((roleOverride || user?.role) === 'provider') return '/provider/dashboard';
+    return '/dashboard';
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && user) navigate(destination(), { replace: true });
+  }, [isAuthenticated, user]);
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const res = await login(email, password);
-      toast.success('Login successful!');
-      const role = res?.user?.role;
-      if (role === 'admin') navigate('/admin');
-      else if (role === 'provider') navigate('/provider');
-      else navigate('/');
+      const result = await login(email, password);
+      toast.success('Welcome back!');
+      navigate(destination(result.user?.role), { replace: true });
     } catch (err) {
-      const errorMsg = err?.response?.data?.message || err?.message || 'Login failed';
+      const errorMsg = err?.message?.toLowerCase().includes('invalid login') ? 'Email or password is incorrect.' : 'We couldn\'t connect to Aidora. Please check your connection and try again.';
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {

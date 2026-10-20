@@ -9,11 +9,14 @@ import LoadingScreen from './components/LoadingScreen.jsx';
 import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
+import GetStarted from './pages/GetStarted.jsx';
 import Services from './pages/Services.jsx';
 import ServiceDetails from './pages/ServiceDetails.jsx';
 import ProviderServices from './pages/ProviderServices.jsx';
 import ProviderOnboarding from './pages/ProviderOnboarding.jsx';
 import CreateService from './pages/CreateService.jsx';
+import ProviderLocation from './pages/ProviderLocation.jsx';
+import ProviderReviews from './pages/ProviderReviews.jsx';
 import Bookings from './pages/Bookings.jsx';
 import Profile from './pages/Profile.jsx';
 import Settings from './pages/Settings.jsx';
@@ -21,6 +24,7 @@ import GuestSettings from './pages/GuestSettings.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
 import Wallet from './pages/Wallet.jsx';
+import Dashboard from './pages/Dashboard.jsx';
 
 // Admin & Provider
 import ProviderDashboard from './admin/ProviderDashboard.jsx';
@@ -47,6 +51,7 @@ function AppContent() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/get-started" element={<GetStarted />} />
           <Route path="/services" element={<Services />} />
           <Route path="/services/:id" element={<ServiceDetails />} />
           <Route path="/guest-settings" element={<GuestSettings />} />
@@ -54,6 +59,14 @@ function AppContent() {
           <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Protected User Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute roles={['user']}>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/bookings"
             element={
@@ -120,6 +133,8 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          <Route path="/provider/location" element={<ProtectedRoute roles={['provider', 'admin']}><ProviderLocation /></ProtectedRoute>} />
+          <Route path="/provider/reviews" element={<ProtectedRoute roles={['provider', 'admin']}><ProviderReviews /></ProtectedRoute>} />
           <Route
             path="/provider/services/create"
             element={

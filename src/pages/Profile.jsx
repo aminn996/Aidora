@@ -1,201 +1,39 @@
 import { useEffect, useState } from 'react';
+import { FiSave, FiUser } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext.jsx';
+
+const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-white';
 
 export default function Profile() {
   const { user, updateProfile } = useAuth();
-  const [form, setForm] = useState({
-    name: '',
-    phone: '',
-    city: '',
-    address: '',
-    bio: '',
-    skills: '',
-    servicesOffered: '',
-    hourlyRate: '',
-    availabilityNote: '',
-  });
+  const [form, setForm] = useState({ display_name: '', phone_number: '', country: '', region: '', city: '', bio: '' });
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.profile) return;
     setForm({
-      name: user.name || '',
-      phone: user.phone || '',
-      city: user.city || '',
-      address: user.address || '',
-      bio: user.providerProfile?.bio || '',
-      skills: (user.providerProfile?.skills || []).join(', '),
-      servicesOffered: (user.providerProfile?.servicesOffered || [])
-        .map((s) => `${s.title}${s.price ? ` | ${s.price}` : ''}`)
-        .join('\n'),
-      hourlyRate: user.providerProfile?.hourlyRate || '',
-      availabilityNote: user.providerProfile?.availabilityNote || '',
+      display_name: user.profile.display_name || user.name || '',
+      phone_number: user.profile.phone_number || '',
+      country: user.profile.country || '',
+      region: user.profile.region || '',
+      city: user.profile.city || '',
+      bio: user.profile.bio || '',
     });
   }, [user]);
 
-  if (!user) return null;
-
-  const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const update = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+  const save = async (event) => {
+    event.preventDefault();
     setSaving(true);
-    setMessage('');
     try {
-      const payload = {
-        name: form.name,
-        phone: form.phone,
-        city: form.city,
-        address: form.address,
-      };
-
-      if (form.bio) payload.bio = form.bio;
-      if (form.skills) payload.skills = form.skills.split(',').map((s) => s.trim()).filter(Boolean);
-      if (form.servicesOffered) {
-        payload.servicesOffered = form.servicesOffered
-          .split('\n')
-          .map((line) => {
-            const [title, price] = line.split('|').map((p) => p && p.trim());
-            if (!title) return null;
-            return { title, price: price ? Number(price) : undefined };
-          })
-          .filter(Boolean);
-      }
-      if (form.hourlyRate !== '') payload.hourlyRate = Number(form.hourlyRate);
-      if (form.availabilityNote) payload.availabilityNote = form.availabilityNote;
-
-      const res = await updateProfile(payload);
-      setMessage(res.message || 'Profile updated');
-    } catch (err) {
-      console.error(err);
-      setMessage('Failed to update profile');
-    } finally {
-      setSaving(false);
-    }
+      await updateProfile(form);
+      toast.success('Profile updated successfully.');
+    } catch (error) {
+      toast.error(error.message || 'Could not update your profile.');
+    } finally { setSaving(false); }
   };
 
-  return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h2 className="text-2xl font-bold mb-2">Profile</h2>
-      <p className="text-gray-600 dark:text-gray-300 mb-6">Update your account details</p>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold mb-1">Name</label>
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1">Email</label>
-            <input value={user.email} disabled className="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-800" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1">Phone</label>
-            <input
-              name="phone"
-              value={form.phone}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1">City</label>
-            <input
-              name="city"
-              value={form.city}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1">Address</label>
-            <input
-              name="address"
-              value={form.address}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800"
-            />
-          </div>
-        </div>
-
-        {user.role === 'provider' && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold mb-1">Bio</label>
-              <textarea
-                name="bio"
-                rows={3}
-                value={form.bio}
-                onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1">Skills (comma separated)</label>
-              <input
-                name="skills"
-                value={form.skills}
-                onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1">Services Offered (one per line: title | price)</label>
-              <textarea
-                name="servicesOffered"
-                rows={4}
-                value={form.servicesOffered}
-                onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800"
-                placeholder="Plumbing repair | 80\nElectrical check | 60"
-              />
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold mb-1">Hourly Rate (TND)</label>
-                <input
-                  name="hourlyRate"
-                  type="number"
-                  min="0"
-                  value={form.hourlyRate}
-                  onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1">Availability</label>
-                <input
-                  name="availabilityNote"
-                  value={form.availabilityNote}
-                  onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800"
-                  placeholder="Mon-Fri 9h-18h"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          {message && <span className="text-sm text-gray-600 dark:text-gray-300">{message}</span>}
-        </div>
-      </form>
-    </div>
-  );
+  if (!user) return null;
+  return <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8"><div className="mb-8"><p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Account profile</p><h1 className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">Your profile</h1><p className="mt-2 text-slate-600 dark:text-slate-300">Keep your contact details and service location up to date.</p></div><form onSubmit={save} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8"><div className="mb-8 flex items-center gap-4"><div className="flex size-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><FiUser size={28} /></div><div><p className="font-semibold text-slate-950 dark:text-white">{user.email}</p><p className="text-sm capitalize text-slate-500">{user.role} account</p></div></div><div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold text-slate-700 dark:text-slate-200">Display name<input name="display_name" value={form.display_name} onChange={update} className={`${inputClass} mt-2`} required /></label><label className="text-sm font-semibold text-slate-700 dark:text-slate-200">Phone number<input name="phone_number" value={form.phone_number} onChange={update} className={`${inputClass} mt-2`} /></label><label className="text-sm font-semibold text-slate-700 dark:text-slate-200">Country<input name="country" value={form.country} onChange={update} className={`${inputClass} mt-2`} /></label><label className="text-sm font-semibold text-slate-700 dark:text-slate-200">Region<input name="region" value={form.region} onChange={update} className={`${inputClass} mt-2`} /></label><label className="text-sm font-semibold text-slate-700 dark:text-slate-200 sm:col-span-2">City<input name="city" value={form.city} onChange={update} className={`${inputClass} mt-2`} /></label><label className="text-sm font-semibold text-slate-700 dark:text-slate-200 sm:col-span-2">Bio<textarea name="bio" value={form.bio} onChange={update} rows={4} className={`${inputClass} mt-2`} placeholder="Tell the Aidora community a little about you." /></label></div><button type="submit" disabled={saving} className="mt-7 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"><FiSave />{saving ? 'Saving…' : 'Save profile'}</button></form></main>;
 }
