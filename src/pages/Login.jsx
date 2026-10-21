@@ -32,7 +32,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const result = await login(email, password);
+      const result = await login(email.trim(), password);
       toast.success('Welcome back!');
       navigate(destination(result.user?.role), { replace: true });
     } catch (err) {
