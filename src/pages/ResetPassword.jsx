@@ -1,33 +1,36 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiLock, FiCheckCircle, FiArrowLeft } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import api from '../services/api';
+import { supabase } from '../services/supabase';
 
 export default function ResetPassword() {
-  const [params] = useSearchParams();
+
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [token, setToken] = useState('');
+  const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    const t = params.get('token');
-    if (t) setToken(t);
-  }, [params]);
+    let active = true;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (active) setReady(Boolean(session));
+    });
+    return () => { active = false; };
+  }, []);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
-    if (!token) {
-      toast.error('Reset token missing');
+    if (!ready) {
+      toast.error('This reset link is missing or has expired. Request a new one.');
       return;
     }
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (password.length < 8) {
+      toast.error('Password must be at least 8 characters');
       return;
     }
     if (password !== confirm) {
@@ -36,12 +39,13 @@ export default function ResetPassword() {
     }
     setLoading(true);
     try {
-      const res = await api.post('/auth/reset-password', { token, password });
-      setMessage(res.data?.message || 'Password reset successfully');
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      setMessage('Password reset successfully.');
       toast.success('Password updated');
       setTimeout(() => navigate('/login'), 1200);
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Unable to reset password';
+      const msg = err?.message || 'Unable to reset password. Request a new link and try again.';
       toast.error(msg);
       setMessage(msg);
     } finally {
