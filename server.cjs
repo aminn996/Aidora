@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('node:crypto');
 const { z } = require('zod');
 require('dotenv').config();
-const { pool, connectDB } = require('./config/db');
+const { pool, connectDB } = require('./config/db.cjs');
 
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
@@ -38,7 +38,7 @@ function auth(req, res, next) {
 }
 function role(...roles) { return (req, res, next) => roles.includes(req.auth.role) ? next() : res.status(403).json({ message: 'Insufficient permissions' }); }
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok', database: 'neon', timestamp: new Date().toISOString() }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok', database: 'postgres', timestamp: new Date().toISOString() }));
 app.post('/api/auth/register', asyncRoute(async (req, res) => {
   const input = userSchema.parse(req.body);
   const hash = await bcrypt.hash(input.password, 12);

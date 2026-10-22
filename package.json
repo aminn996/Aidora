@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:api": "node --watch server.js",
-    "start": "node server.js",
+"dev:api": "node --watch server.cjs",
+    "start": "node server.cjs",
     "build": "vite build",
     "preview": "vite preview"
   },

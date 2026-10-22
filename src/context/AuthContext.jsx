@@ -30,10 +30,12 @@ export function AuthProvider({ children }) {
       return null;
     }
 
-    const [{ data: profile }, { data: roleRows }] = await Promise.all([
+    const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle(),
       supabase.from('user_roles').select('role').eq('user_id', authUser.id),
     ]);
+    if (profileError) throw profileError;
+    if (rolesError) throw rolesError;
     const nextUser = mapUser(authUser, profile, roleRows?.map(({ role }) => role) || []);
     setUser(nextUser);
     return nextUser;
@@ -41,17 +43,25 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let active = true;
-    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
-      if (!active) return;
-      setSession(currentSession);
-      await hydrateUser(currentSession?.user || null);
-      if (active) setLoading(false);
-    });
+    const initialize = async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!active) return;
+        setSession(currentSession);
+        await hydrateUser(currentSession?.user || null);
+      } catch (error) {
+        if (active) setUser(null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    initialize();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       setSession(currentSession);
-      await hydrateUser(currentSession?.user || null);
-      if (active) setLoading(false);
+      void hydrateUser(currentSession?.user || null)
+        .catch(() => { if (active) setUser(null); })
+        .finally(() => { if (active) setLoading(false); });
     });
 
     return () => {
