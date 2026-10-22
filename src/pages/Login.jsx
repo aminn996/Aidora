@@ -36,6 +36,7 @@ export default function Login() {
       toast.success('Welcome back!');
       navigate(destination(result.user?.role), { replace: true });
     } catch (err) {
+      if (import.meta.env.DEV) console.error('[v0] Supabase sign-in failed:', { message: err?.message, status: err?.status, code: err?.code });
       const authMessage = err?.message?.toLowerCase() || '';
       const errorMsg = authMessage.includes('invalid login')
         ? 'Email or password is incorrect.'

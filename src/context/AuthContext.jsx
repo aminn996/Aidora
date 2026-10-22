@@ -61,7 +61,8 @@ export function AuthProvider({ children }) {
   }, [hydrateUser]);
 
   const login = useCallback(async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const normalizedEmail = email.trim().toLowerCase();
+    const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
     if (error) throw error;
     const nextUser = await hydrateUser(data.user);
     return { ...data, user: nextUser };
