@@ -1,12 +1,14 @@
 const { Pool } = require('pg');
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is required');
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL;
+if (!connectionString) {
+  throw new Error('A PostgreSQL connection string is required (DATABASE_URL or POSTGRES_URL).');
 }
 
+const sanitizedConnectionString = connectionString.replace(/[?&]sslmode=[^&]*/i, '').replace(/[?&]$/, '');
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  connectionString: sanitizedConnectionString,
+  ssl: { rejectUnauthorized: false },
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,

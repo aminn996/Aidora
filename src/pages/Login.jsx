@@ -25,7 +25,7 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated && user) navigate(destination(), { replace: true });
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, location.search]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -62,47 +62,6 @@ export default function Login() {
     }
   };
 
-  const handleFacebookLogin = async () => {
-    const toastId = toast.loading('Connecting to Facebook...');
-    try {
-      if (!window.FB) {
-        toast.error('Facebook SDK not available. Please refresh and configure VITE_FACEBOOK_APP_ID', { id: toastId });
-        return;
-      }
-
-      window.FB.login(async (response) => {
-        if (response.authResponse) {
-          try {
-            // Get user data from Facebook
-            window.FB.api('/me', { fields: 'id,name,email,picture' }, async (user) => {
-              try {
-                // Send to backend
-                const res = await api.post('/auth/facebook', {
-                  facebookId: user.id,
-                  email: user.email,
-                  name: user.name,
-                  profilePicture: user.picture?.data?.url,
-                });
-                
-                localStorage.setItem('token', res.data.token);
-                toast.success('Facebook login successful!', { id: toastId });
-                navigate('/');
-              } catch (err) {
-                toast.error(err?.response?.data?.message || 'Facebook login failed', { id: toastId });
-              }
-            });
-          } catch (err) {
-            toast.error('Failed to get Facebook user data', { id: toastId });
-          }
-        } else {
-          toast.error('Facebook login was cancelled', { id: toastId });
-        }
-      }, { scope: 'public_profile,email' });
-    } catch (err) {
-      console.error('Facebook login error:', err);
-      toast.error('Facebook login not configured', { id: toastId });
-    }
-  };
 
   return (
     <motion.div
