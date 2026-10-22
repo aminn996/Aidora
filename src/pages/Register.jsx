@@ -33,7 +33,11 @@ export default function Register() {
     if (score < 2) return setError('Use at least 8 characters, one uppercase letter, and one number.');
     setLoading(true);
     try {
-      await register({ name: form.name.trim(), email: form.email.trim(), password: form.password });
+      const result = await register({ name: form.name.trim(), email: form.email.trim().toLowerCase(), password: form.password });
+      if (!result.session) {
+        setError('Account created. Check your email to confirm your address before signing in.');
+        return;
+      }
       navigate(accountType === 'provider' ? '/provider/onboarding' : '/dashboard');
     } catch (err) {
       setError(err.message || 'We could not create your account. Please try again.');

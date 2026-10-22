@@ -4,6 +4,12 @@ import { supabase } from '../services/supabase';
 
 const AuthContext = createContext(null);
 
+function getAuthRedirect(path) {
+  const configured = import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.trim();
+  if (configured) return configured;
+  return `${window.location.origin}${path}`;
+}
+
 function mapUser(user, profile, roles = []) {
   const role = roles.includes('ADMIN') ? 'admin' : roles.includes('PROVIDER') ? 'provider' : 'user';
   return {
@@ -83,7 +89,7 @@ export function AuthProvider({ children }) {
       email: payload.email,
       password: payload.password,
       options: {
-        emailRedirectTo: import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/login`,
+        emailRedirectTo: getAuthRedirect('/login'),
         data: {
           first_name: payload.firstName || payload.first_name,
           last_name: payload.lastName || payload.last_name,
@@ -100,7 +106,7 @@ export function AuthProvider({ children }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectTo || import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/login`,
+        redirectTo: redirectTo || getAuthRedirect('/login'),
       },
     });
     if (error) throw error;
