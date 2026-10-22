@@ -22,7 +22,14 @@ app.use(helmet());
 app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
-app.use(cors({ origin: origins.length ? origins : true, credentials: true }));
+const allowedOrigins = new Set(origins);
+app.use(cors({
+  origin: (requestOrigin, callback) => {
+    if (!requestOrigin || allowedOrigins.has(requestOrigin)) return callback(null, true);
+    return callback(new Error('Origin not allowed by CORS'));
+  },
+  credentials: true,
+}));
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: true }));
 
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
@@ -135,7 +142,13 @@ app.put('/api/admin/providers/:id/commission', ...adminOnly, asyncRoute(async (r
   res.json({ message: 'Commission policy updated', exempt: req.body.exempt });
 }));
 
-app.use((err, req, res, next) => { if (err instanceof z.ZodError) return res.status(400).json({ message: 'Invalid request', issues: err.issues }); if (err.code === '23505') return res.status(409).json({ message: 'A record with that value already exists' }); console.error(err); res.status(500).json({ message: 'Internal server error' }); });
+app.use((err, req, res, next) => {
+  if (err instanceof z.ZodError) return res.status(400).json({ message: 'Invalid request', issues: err.issues });
+  if (err.message === 'Origin not allowed by CORS') return res.status(403).json({ message: 'Origin not allowed' });
+  if (err.code === '23505') return res.status(409).json({ message: 'A record with that value already exists' });
+  console.error('[api]', err);
+  return res.status(500).json({ message: 'Internal server error' });
+});
 
 if (require.main === module) connectDB().then(() => app.listen(PORT, () => console.log(`Aidora API listening on ${PORT}`))).catch((error) => { console.error(error); process.exit(1); });
 module.exports = app;

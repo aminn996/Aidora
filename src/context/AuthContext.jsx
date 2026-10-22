@@ -135,7 +135,6 @@ export function AuthProvider({ children }) {
       login,
       register,
       googleLogin,
-      facebookLogin: googleLogin,
       updateProfile,
       logout,
       apiClient: supabase,

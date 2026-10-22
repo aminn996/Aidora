@@ -63,7 +63,7 @@ async function connectDB() {
   } finally {
     client.release();
   }
-  console.log('Neon Postgres connected and schema ready');
+  if (process.env.NODE_ENV !== 'test') console.info('PostgreSQL connection established and schema verified');
 }
 
 module.exports = { pool, connectDB };
