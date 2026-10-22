@@ -1,4 +1,5 @@
 // Updated: Fixed AuthProvider context structure - BrowserRouter > AuthProvider > AppContent
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
@@ -12,24 +13,24 @@ import Register from './pages/Register.jsx';
 import GetStarted from './pages/GetStarted.jsx';
 import Services from './pages/Services.jsx';
 import ServiceDetails from './pages/ServiceDetails.jsx';
-import ProviderServices from './pages/ProviderServices.jsx';
-import ProviderOnboarding from './pages/ProviderOnboarding.jsx';
-import CreateService from './pages/CreateService.jsx';
-import ProviderLocation from './pages/ProviderLocation.jsx';
-import ProviderReviews from './pages/ProviderReviews.jsx';
-import Bookings from './pages/Bookings.jsx';
-import Profile from './pages/Profile.jsx';
-import Settings from './pages/Settings.jsx';
-import GuestSettings from './pages/GuestSettings.jsx';
-import ForgotPassword from './pages/ForgotPassword.jsx';
-import ResetPassword from './pages/ResetPassword.jsx';
-import Wallet from './pages/Wallet.jsx';
-import Dashboard from './pages/Dashboard.jsx';
+const ProviderServices = lazy(() => import('./pages/ProviderServices.jsx'));
+const ProviderOnboarding = lazy(() => import('./pages/ProviderOnboarding.jsx'));
+const CreateService = lazy(() => import('./pages/CreateService.jsx'));
+const ProviderLocation = lazy(() => import('./pages/ProviderLocation.jsx'));
+const ProviderReviews = lazy(() => import('./pages/ProviderReviews.jsx'));
+const Bookings = lazy(() => import('./pages/Bookings.jsx'));
+const Profile = lazy(() => import('./pages/Profile.jsx'));
+const Settings = lazy(() => import('./pages/Settings.jsx'));
+const GuestSettings = lazy(() => import('./pages/GuestSettings.jsx'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
+const Wallet = lazy(() => import('./pages/Wallet.jsx'));
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 
 // Admin & Provider
-import ProviderDashboard from './admin/ProviderDashboard.jsx';
-import AdminDashboard from './admin/AdminDashboard.jsx';
-import AdminControl from './admin/AdminControl.jsx';
+const ProviderDashboard = lazy(() => import('./admin/ProviderDashboard.jsx'));
+const AdminDashboard = lazy(() => import('./admin/AdminDashboard.jsx'));
+const AdminControl = lazy(() => import('./admin/AdminControl.jsx'));
 
 // Components
 import Navbar from './components/Navbar.jsx';
@@ -47,7 +48,8 @@ function AppContent() {
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300 flex flex-col">
       <Navbar />
       <main className="flex-grow">
-        <Routes>
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -163,7 +165,8 @@ function AppContent() {
           />
 
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+          </Routes>
+        </Suspense>
       </main>
       <Footer />
       <Toaster position="top-center" />
