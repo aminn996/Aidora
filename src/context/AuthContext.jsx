@@ -40,8 +40,11 @@ export function AuthProvider({ children }) {
       supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle(),
       supabase.from('user_roles').select('role').eq('user_id', authUser.id),
     ]);
-    if (profileError) throw profileError;
-    if (rolesError) throw rolesError;
+    // Authentication must not fail just because optional profile/role enrichment is
+    // unavailable. Supabase has already validated the credentials at this point;
+    // keep the session usable and fall back to the auth user until enrichment works.
+    if (profileError) console.warn('[v0] Profile enrichment unavailable:', profileError.message);
+    if (rolesError) console.warn('[v0] Role enrichment unavailable:', rolesError.message);
     const nextUser = mapUser(authUser, profile, roleRows?.map(({ role }) => role) || []);
     setUser(nextUser);
     return nextUser;

@@ -37,15 +37,15 @@ export default function Login() {
       navigate(destination(result.user?.role), { replace: true });
     } catch (err) {
       const authMessage = err?.message?.toLowerCase() || '';
-      const errorMsg = authMessage.includes('invalid login')
+      const errorMsg = authMessage.includes('invalid login') || authMessage.includes('invalid credentials')
         ? 'Email or password is incorrect.'
         : authMessage.includes('email not confirmed')
           ? 'Please confirm your email address before signing in.'
-          : authMessage.includes('too many requests')
+          : authMessage.includes('too many requests') || authMessage.includes('rate limit')
             ? 'Too many sign-in attempts. Please wait a few minutes and try again.'
             : authMessage.includes('failed to fetch') || authMessage.includes('network')
-              ? 'We couldn\'t reach Aidora. Check your connection and try again.'
-              : err?.message || 'Sign-in failed. Please try again.';
+              ? "We couldn't reach Aidora. Check your connection and try again."
+              : 'Sign-in failed. Please try again.';
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
