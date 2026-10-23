@@ -103,10 +103,13 @@ export function AuthProvider({ children }) {
   }, [hydrateUser]);
 
   const googleLogin = useCallback(async (redirectTo) => {
+    const safeRedirect = typeof redirectTo === 'string' && redirectTo.startsWith('/') && !redirectTo.startsWith('//')
+      ? `${window.location.origin}${redirectTo}`
+      : getAuthRedirect('/login');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectTo || getAuthRedirect('/login'),
+        redirectTo: safeRedirect,
       },
     });
     if (error) throw error;
