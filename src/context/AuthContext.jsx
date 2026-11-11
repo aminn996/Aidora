@@ -5,9 +5,13 @@ import { supabase } from '../services/supabase';
 const AuthContext = createContext(null);
 
 function getAuthRedirect(path) {
-  const configured = import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.trim();
-  if (configured) return configured;
-  return `${window.location.origin}${path}`;
+  const safePath = typeof path === 'string' && path.startsWith('/') && !path.startsWith('//')
+    ? path
+    : '/login';
+  const configured = import.meta.env.DEV
+    ? import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.trim()
+    : '';
+  return configured || `${window.location.origin}${safePath}`;
 }
 
 function mapUser(user, profile, roles = []) {
@@ -40,8 +44,11 @@ export function AuthProvider({ children }) {
       supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle(),
       supabase.from('user_roles').select('role').eq('user_id', authUser.id),
     ]);
-    if (profileError) throw profileError;
-    if (rolesError) throw rolesError;
+    // Authentication must not fail just because optional profile/role enrichment is
+    // unavailable. Supabase has already validated the credentials at this point;
+    // keep the session usable and fall back to the auth user until enrichment works.
+    if (profileError) console.warn('[v0] Profile enrichment unavailable:', profileError.message);
+    if (rolesError) console.warn('[v0] Role enrichment unavailable:', rolesError.message);
     const nextUser = mapUser(authUser, profile, roleRows?.map(({ role }) => role) || []);
     setUser(nextUser);
     return nextUser;
@@ -103,10 +110,13 @@ export function AuthProvider({ children }) {
   }, [hydrateUser]);
 
   const googleLogin = useCallback(async (redirectTo) => {
+    const safeRedirect = typeof redirectTo === 'string' && redirectTo.startsWith('/') && !redirectTo.startsWith('//')
+      ? `${window.location.origin}${redirectTo}`
+      : getAuthRedirect('/login');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectTo || getAuthRedirect('/login'),
+        redirectTo: safeRedirect,
       },
     });
     if (error) throw error;

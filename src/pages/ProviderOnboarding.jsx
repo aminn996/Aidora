@@ -28,6 +28,8 @@ export default function ProviderOnboarding() {
         experience: form.experience.trim() || null,
         country: form.country.trim() || null,
         city: form.city.trim() || null,
+        service_radius: Number(form.serviceRadius) || 25,
+        status: existing?.status || 'PENDING',
       };
       const { data: existing, error: lookupError } = await supabase.from('provider_applications').select('id, status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (lookupError) throw lookupError;
