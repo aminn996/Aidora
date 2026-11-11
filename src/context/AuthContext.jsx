@@ -5,9 +5,13 @@ import { supabase } from '../services/supabase';
 const AuthContext = createContext(null);
 
 function getAuthRedirect(path) {
-  const configured = import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.trim();
-  if (configured) return configured;
-  return `${window.location.origin}${path}`;
+  const safePath = typeof path === 'string' && path.startsWith('/') && !path.startsWith('//')
+    ? path
+    : '/login';
+  const configured = import.meta.env.DEV
+    ? import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.trim()
+    : '';
+  return configured || `${window.location.origin}${safePath}`;
 }
 
 function mapUser(user, profile, roles = []) {
