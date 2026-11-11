@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { FiMail, FiCheckCircle, FiArrowLeft } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { supabase } from '../services/supabase';
+import { getAuthRedirect } from '../services/authRedirect';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -14,12 +15,8 @@ export default function ForgotPassword() {
   const onSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
-    const configuredRedirect = import.meta.env.DEV
-      ? import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.trim()
-      : '';
-    const redirectTo = configuredRedirect || `${window.location.origin}/reset-password`;
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo,
+      redirectTo: getAuthRedirect('/reset-password'),
     });
     setLoading(false);
     if (error) {

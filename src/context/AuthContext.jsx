@@ -1,18 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import useGeolocation from '../hooks/useGeolocation';
 import { supabase } from '../services/supabase';
+import { getAuthRedirect } from '../services/authRedirect';
 
 const AuthContext = createContext(null);
-
-function getAuthRedirect(path) {
-  const safePath = typeof path === 'string' && path.startsWith('/') && !path.startsWith('//')
-    ? path
-    : '/login';
-  const configured = import.meta.env.DEV
-    ? import.meta.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.trim()
-    : '';
-  return configured || `${window.location.origin}${safePath}`;
-}
 
 function mapUser(user, profile, roles = []) {
   const role = roles.includes('ADMIN') ? 'admin' : roles.includes('PROVIDER') ? 'provider' : 'user';
@@ -109,14 +100,11 @@ export function AuthProvider({ children }) {
     return data;
   }, [hydrateUser]);
 
-  const googleLogin = useCallback(async (redirectTo) => {
-    const safeRedirect = typeof redirectTo === 'string' && redirectTo.startsWith('/') && !redirectTo.startsWith('//')
-      ? `${window.location.origin}${redirectTo}`
-      : getAuthRedirect('/login');
+  const googleLogin = useCallback(async (redirectPath = '/login') => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: safeRedirect,
+        redirectTo: getAuthRedirect(redirectPath),
       },
     });
     if (error) throw error;
