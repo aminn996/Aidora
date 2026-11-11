@@ -13,7 +13,15 @@ export default function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const intent = searchParams.get('intent') === 'provider' ? 'provider' : 'customer';
-  const [accountType, setAccountType] = useState(intent);
+  const [accountType, setAccountType] = useState(() => {
+    try {
+      const pendingType = sessionStorage.getItem('aidora.oauth-account-type');
+      sessionStorage.removeItem('aidora.oauth-account-type');
+      return pendingType === 'provider' ? 'provider' : intent;
+    } catch {
+      return intent;
+    }
+  });
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,8 +54,10 @@ export default function Register() {
 
   const googleSignup = async () => {
     try {
-      await googleLogin(`${window.location.origin}/register?intent=${accountType}`);
-    } catch (err) {
+      sessionStorage.setItem('aidora.oauth-account-type', accountType);
+      await googleLogin('/register');
+    } catch {
+      sessionStorage.removeItem('aidora.oauth-account-type');
       toast.error('Google sign-up is unavailable right now. Please try again.');
     }
   };
